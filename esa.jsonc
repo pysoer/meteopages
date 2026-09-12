@@ -3,7 +3,7 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "assets": {
-    "directory": "./vitepress/dist", 
-    "notFoundStrategy": "singlePageApplication"
+    "directory": "./.vitepress/dist",
+    "notFoundStrategy": "none"
   }
 }
