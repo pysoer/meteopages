@@ -1,0 +1,2 @@
+# 将设备实拍图放入本目录，例如 public/images/th.jpg
+# 然后在对应设备页的 <EquipmentPage> 上添加 image="/images/th.jpg" 即可替换示意图

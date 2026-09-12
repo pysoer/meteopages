@@ -1,0 +1,2 @@
+# 将演示视频放入本目录，例如 public/videos/th.mp4
+# 然后在对应设备页的 <EquipmentPage> 上添加 video="/videos/th.mp4"

@@ -1,0 +1,124 @@
+/* ============================================================
+   气象观测场设备导览 —— 科技感（Sci-Fi）主题（手机端优先）
+   ============================================================ */
+
+:root {
+  --vp-c-brand-1: #22d3ee;
+  --vp-c-brand-2: #0ea5e9;
+  --vp-c-brand-3: #6366f1;
+  --vp-c-brand-soft: rgba(34, 211, 238, 0.12);
+
+  --vp-c-bg: #05070f;
+  --vp-c-bg-alt: #0a0e1a;
+  --vp-c-bg-elv: #0e1424;
+  --vp-c-bg-soft: #111827;
+
+  --vp-c-text-1: #e6f1ff;
+  --vp-c-text-2: #aab8d0;
+  --vp-c-text-3: #6b7a99;
+  --vp-c-divider: rgba(120, 160, 220, 0.14);
+
+  --sci-cyan: #22d3ee;
+  --sci-blue: #3b82f6;
+  --sci-purple: #a855f7;
+  --sci-glow: 0 0 18px rgba(34, 211, 238, 0.55);
+}
+
+:root:not(.dark) {
+  --vp-c-bg: #0a1020;
+  --vp-c-bg-alt: #0d1426;
+  --vp-c-bg-elv: #111a30;
+  --vp-c-text-1: #eaf2ff;
+  --vp-c-text-2: #b3c2dc;
+}
+
+/* 全局背景：星点 + 网格 */
+.vp-doc, .VPHome, #app {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 10% 10%, rgba(34, 211, 238, 0.14), transparent 55%),
+    linear-gradient(180deg, #05070f 0%, #070b16 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(120, 160, 220, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 160, 220, 0.05) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: radial-gradient(circle at 50% 30%, #000 0%, transparent 80%);
+}
+
+.VPContent, .VPHome, .VPFooter, .VPSidebar, .VPNav { position: relative; z-index: 1; }
+
+/* 顶部导航发光 */
+.VPNav {
+  background: rgba(8, 12, 24, 0.72) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.VPNavBarTitle .title {
+  background: linear-gradient(90deg, var(--sci-cyan), var(--sci-purple));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-weight: 700; letter-spacing: 0.5px;
+}
+.VPNavBarMenuLink:hover, .VPSidebarItem .link:hover { color: var(--sci-cyan) !important; text-shadow: var(--sci-glow); }
+
+/* 科技卡片 */
+.sci-card {
+  position: relative;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(20, 28, 48, 0.85), rgba(10, 14, 26, 0.9));
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(120, 160, 220, 0.06);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.sci-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(400px 200px at var(--mx, 50%) var(--my, 0%), rgba(34, 211, 238, 0.18), transparent 70%);
+  opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+}
+.sci-card:hover { transform: translateY(-6px); border-color: rgba(34, 211, 238, 0.55); box-shadow: 0 14px 40px rgba(34, 211, 238, 0.18), inset 0 0 0 1px rgba(34, 211, 238, 0.18); }
+.sci-card:hover::before { opacity: 1; }
+.sci-card .corner { position: absolute; width: 14px; height: 14px; border: 2px solid var(--sci-cyan); opacity: 0.7; }
+.sci-card .corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+.sci-card .corner.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; }
+.sci-card .corner.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; }
+.sci-card .corner.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+
+.sci-kicker {
+  display: inline-block; font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--sci-cyan); border: 1px solid rgba(34, 211, 238, 0.4); border-radius: 999px;
+  padding: 3px 12px; margin-bottom: 12px; background: rgba(34, 211, 238, 0.08);
+}
+
+.sci-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 999px;
+  font-weight: 600; text-decoration: none; color: #04121a;
+  background: linear-gradient(90deg, var(--sci-cyan), var(--sci-blue));
+  box-shadow: 0 6px 24px rgba(34, 211, 238, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.sci-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(34, 211, 238, 0.6); }
+.sci-btn.ghost { color: var(--sci-cyan); background: transparent; border: 1px solid rgba(34, 211, 238, 0.5); box-shadow: none; }
+.sci-btn.ghost:hover { background: rgba(34, 211, 238, 0.08); }
+
+.vp-doc a { color: var(--sci-cyan); }
+.vp-doc div[class*='language-'] { border-radius: 12px; border: 1px solid var(--vp-c-divider); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--sci-blue), var(--sci-purple)); border-radius: 8px; }
+::-webkit-scrollbar-track { background: #05070f; }
+
+/* ---------- 手机端微调 ---------- */
+@media (max-width: 600px) {
+  .VPContent { padding-top: 0; }
+  .sci-card { border-radius: 12px; }
+  .sci-kicker { font-size: 10px; padding: 2px 10px; }
+}
