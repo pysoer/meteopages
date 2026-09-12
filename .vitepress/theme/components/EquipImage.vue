@@ -17,7 +17,14 @@ const accent: Record<string, string> = {
   ground: '#f59e0b',
   sunshine: '#facc15',
   grass: '#84cc16',
-  deep: '#fb923c'
+  deep: '#fb923c',
+  cloudradar: '#60a5fa',
+  radiometer: '#fbbf24',
+  aerosollidar: '#f87171',
+  windprofiler: '#818cf8',
+  gnssmet: '#34d399',
+  lidarwind: '#2dd4bf',
+  weathermod: '#f43f5e'
 }
 </script>
 
@@ -147,6 +154,60 @@ const accent: Record<string, string> = {
         <line x1="312" y1="285" x2="328" y2="285" /><line x1="312" y1="345" x2="328" y2="345" />
         <circle cx="320" cy="185" r="3" :fill="accent.deep" /><circle cx="320" cy="225" r="3" :fill="accent.deep" />
         <circle cx="320" cy="285" r="3" :fill="accent.deep" /><circle cx="320" cy="345" r="3" :fill="accent.deep" />
+      </g>
+
+      <!-- 毫米波测云仪：天线箱 + 向上雷达波 -->
+      <g v-else-if="type === 'cloudradar'" :stroke="accent.cloudradar" fill="none" stroke-width="2" filter="url(#glow)">
+        <rect x="294" y="138" width="52" height="34" rx="5" :fill="accent.cloudradar" fill-opacity="0.12" />
+        <path d="M278 120 A42 42 0 0 1 362 120" stroke-dasharray="4 7" />
+        <path d="M268 104 A58 58 0 0 1 372 104" stroke-dasharray="4 7" />
+        <ellipse cx="320" cy="120" rx="40" ry="14" :fill="accent.cloudradar" fill-opacity="0.1" />
+      </g>
+
+      <!-- 微波辐射计：抛物面天线 -->
+      <g v-else-if="type === 'radiometer'" :stroke="accent.radiometer" fill="none" stroke-width="2" filter="url(#glow)">
+        <path d="M268 96 Q320 150 372 96" :fill="accent.radiometer" fill-opacity="0.1" />
+        <line x1="320" y1="124" x2="320" y2="156" />
+        <circle cx="320" cy="90" r="5" :fill="accent.radiometer" />
+      </g>
+
+      <!-- 气溶胶激光雷达：向上激光束 + 粒子 -->
+      <g v-else-if="type === 'aerosollidar'" :stroke="accent.aerosollidar" fill="none" stroke-width="2" filter="url(#glow)">
+        <path d="M308 150 L296 70 L344 70 L332 150 Z" :fill="accent.aerosollidar" fill-opacity="0.1" />
+        <circle cx="312" cy="100" r="3" :fill="accent.aerosollidar" /><circle cx="330" cy="86" r="3" :fill="accent.aerosollidar" />
+        <circle cx="320" cy="118" r="3" :fill="accent.aerosollidar" /><circle cx="324" cy="76" r="2.5" :fill="accent.aerosollidar" />
+      </g>
+
+      <!-- 风廓线雷达：多天线阵 -->
+      <g v-else-if="type === 'windprofiler'" :stroke="accent.windprofiler" fill="none" stroke-width="2" filter="url(#glow)">
+        <line x1="296" y1="150" x2="296" y2="96" /><line x1="320" y1="150" x2="320" y2="88" /><line x1="344" y1="150" x2="344" y2="96" />
+        <line x1="284" y1="150" x2="284" y2="108" /><line x1="356" y1="150" x2="356" y2="108" />
+        <path d="M276 92 L364 92" stroke-dasharray="3 6" />
+      </g>
+
+      <!-- GNSS/MET：小天线 + 卫星轨道 -->
+      <g v-else-if="type === 'gnssmet'" :stroke="accent.gnssmet" fill="none" stroke-width="2" filter="url(#glow)">
+        <path d="M286 132 Q320 156 354 132" :fill="accent.gnssmet" fill-opacity="0.1" />
+        <ellipse cx="320" cy="108" rx="46" ry="16" stroke-dasharray="4 6" />
+        <circle cx="320" cy="108" r="4" :fill="accent.gnssmet" />
+        <circle cx="366" cy="108" r="3" :fill="accent.gnssmet" /><circle cx="274" cy="108" r="3" :fill="accent.gnssmet" />
+      </g>
+
+      <!-- 3D 激光测风雷达：扫描盒 + 旋转波束 -->
+      <g v-else-if="type === 'lidarwind'" :stroke="accent.lidarwind" fill="none" stroke-width="2" filter="url(#glow)">
+        <rect x="296" y="140" width="48" height="26" rx="5" :fill="accent.lidarwind" fill-opacity="0.12" />
+        <path d="M320 140 L300 96 M320 140 L340 96" />
+        <path d="M320 140 L388 104 M320 140 L252 104" stroke-dasharray="3 6" />
+        <circle cx="320" cy="92" r="4" :fill="accent.lidarwind" />
+      </g>
+
+      <!-- 人工影响天气装备：火箭 + 发射架 + 催化云 -->
+      <g v-else-if="type === 'weathermod'" :stroke="accent.weathermod" fill="none" stroke-width="2" filter="url(#glow)">
+        <line x1="306" y1="150" x2="306" y2="92" /><line x1="334" y1="150" x2="334" y2="92" />
+        <path d="M312 92 L320 64 L328 92 Z" :fill="accent.weathermod" fill-opacity="0.15" />
+        <line x1="320" y1="64" x2="320" y2="50" />
+        <path d="M300 128 Q320 150 340 128" :fill="accent.weathermod" fill-opacity="0.08" />
+        <circle cx="312" cy="78" r="2.5" :fill="accent.weathermod" /><circle cx="328" cy="84" r="2.5" :fill="accent.weathermod" />
       </g>
 
       <text x="320" y="392" text-anchor="middle" fill="rgba(200,220,255,0.7)" font-size="16" letter-spacing="2">

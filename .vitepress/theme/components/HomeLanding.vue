@@ -7,7 +7,7 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 let raf = 0
 
 const stats = [
-  { v: '12', k: '观测设备类型' },
+  { v: '19', k: '观测设备类型' },
   { v: '25+', k: '气象要素' },
   { v: '24h', k: '连续自动观测' },
   { v: '1956', k: '建站年份' }
@@ -25,7 +25,14 @@ const items = [
   { link: '/equipment/grass', type: 'grass', title: '草面温度传感器', desc: '贴地 6cm 测草温，霜冻预警' },
   { link: '/equipment/deep', type: 'deep', title: '深层地温传感器', desc: '测 40–320cm 深层地温' },
   { link: '/equipment/evap', type: 'evap', title: '蒸发观测设备', desc: 'E-601 蒸发皿测水面蒸发' },
-  { link: '/equipment/pressure', type: 'pressure', title: '气压传感器', desc: '测量本站气压' }
+  { link: '/equipment/pressure', type: 'pressure', title: '气压传感器', desc: '测量本站气压' },
+  { link: '/equipment/cloudradar', type: 'cloudradar', title: '毫米波测云仪', desc: '毫米波散射探测云的垂直结构' },
+  { link: '/equipment/radiometer', type: 'radiometer', title: '微波辐射计', desc: '被动微波遥感温湿廓线与云水' },
+  { link: '/equipment/aerosollidar', type: 'aerosollidar', title: '气溶胶激光雷达', desc: '激光遥感气溶胶浓度与分布' },
+  { link: '/equipment/windprofiler', type: 'windprofiler', title: '风廓线雷达', desc: '湍流散射连续获取风场廓线' },
+  { link: '/equipment/gnssmet', type: 'gnssmet', title: 'GNSS/MET 水汽探测仪', desc: '导航卫星信号反演大气可降水量' },
+  { link: '/equipment/lidarwind', type: 'lidarwind', title: '3D 激光测风雷达', desc: '多普勒激光获取三维风场' },
+  { link: '/equipment/weathermod', type: 'weathermod', title: '人工影响天气装备', desc: '火箭/高炮/烟炉/飞机催化增雨防雹' }
 ]
 
 const go = (link: string) => router.go(link)

@@ -27,7 +27,14 @@ export default defineConfig({
           { text: '草面温度传感器', link: '/equipment/grass' },
           { text: '深层地温传感器', link: '/equipment/deep' },
           { text: '蒸发观测设备', link: '/equipment/evap' },
-          { text: '气压传感器', link: '/equipment/pressure' }
+          { text: '气压传感器', link: '/equipment/pressure' },
+          { text: '毫米波测云仪', link: '/equipment/cloudradar' },
+          { text: '微波辐射计', link: '/equipment/radiometer' },
+          { text: '气溶胶激光雷达', link: '/equipment/aerosollidar' },
+          { text: '风廓线雷达', link: '/equipment/windprofiler' },
+          { text: 'GNSS/MET 水汽探测仪', link: '/equipment/gnssmet' },
+          { text: '3D 激光测风雷达', link: '/equipment/lidarwind' },
+          { text: '人工影响天气装备', link: '/equipment/weathermod' }
         ]
       }
     ],
@@ -48,7 +55,14 @@ export default defineConfig({
             { text: '草面温度传感器', link: '/equipment/grass' },
             { text: '深层地温传感器', link: '/equipment/deep' },
             { text: '蒸发观测设备', link: '/equipment/evap' },
-            { text: '气压传感器', link: '/equipment/pressure' }
+            { text: '气压传感器', link: '/equipment/pressure' },
+            { text: '毫米波测云仪', link: '/equipment/cloudradar' },
+            { text: '微波辐射计', link: '/equipment/radiometer' },
+            { text: '气溶胶激光雷达', link: '/equipment/aerosollidar' },
+            { text: '风廓线雷达', link: '/equipment/windprofiler' },
+            { text: 'GNSS/MET 水汽探测仪', link: '/equipment/gnssmet' },
+            { text: '3D 激光测风雷达', link: '/equipment/lidarwind' },
+            { text: '人工影响天气装备', link: '/equipment/weathermod' }
           ]
         }
       ],

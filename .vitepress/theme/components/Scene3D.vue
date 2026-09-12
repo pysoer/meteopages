@@ -6,20 +6,27 @@ const router = useRouter()
 const container = ref<HTMLDivElement | null>(null)
 const selected = ref<any>(null)
 
-// 观测场设备布置（x, z 平面坐标；y 为离地高度），12 类仪器按 4×3 网格排布
+// 观测场设备布置（x, z 平面坐标；y 为离地高度），18 类仪器按 6×3 网格排布
 const EQUIPMENTS = [
-  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, pos: [-9, -7], desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。' },
-  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, pos: [-3, -7], desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。' },
-  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, pos: [3, -7], desc: '翻斗计数，计量降水量，反演降雨强度。' },
-  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, pos: [9, -7], desc: '散射法测量气象光学视程（MOR）。' },
-  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, pos: [-9, 0], desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。' },
-  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, pos: [-3, 0], desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。' },
-  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, pos: [3, 0], desc: '测地面温度及 5/10/15/20cm 浅层地温。' },
-  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, pos: [9, 0], desc: '记录太阳实际照射时数。' },
-  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, pos: [-9, 7], desc: '距地 6cm 测草面温度，用于霜冻预警。' },
-  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, pos: [-3, 7], desc: '测 40/80/160/320cm 深层地温。' },
-  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, pos: [3, 7], desc: 'E-601 蒸发皿，观测水面蒸发量。' },
-  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, pos: [9, 7], desc: '测量本站气压，用于天气形势分析。' }
+  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, pos: [-12.5, -8], desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。' },
+  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, pos: [-7.5, -8], desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。' },
+  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, pos: [-2.5, -8], desc: '翻斗计数，计量降水量，反演降雨强度。' },
+  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, pos: [2.5, -8], desc: '散射法测量气象光学视程（MOR）。' },
+  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, pos: [7.5, -8], desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。' },
+  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, pos: [12.5, -8], desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。' },
+  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, pos: [-12.5, 0], desc: '测地面温度及 5/10/15/20cm 浅层地温。' },
+  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, pos: [-7.5, 0], desc: '记录太阳实际照射时数。' },
+  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, pos: [-2.5, 0], desc: '距地 6cm 测草面温度，用于霜冻预警。' },
+  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, pos: [2.5, 0], desc: '测 40/80/160/320cm 深层地温。' },
+  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, pos: [7.5, 0], desc: 'E-601 蒸发皿，观测水面蒸发量。' },
+  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, pos: [12.5, 0], desc: '测量本站气压，用于天气形势分析。' },
+  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, pos: [-12.5, 8], desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。' },
+  { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, pos: [-7.5, 8], desc: '被动微波遥感，连续获取温湿廓线与云水含量。' },
+  { id: 'aerosollidar', name: '气溶胶激光雷达', type: 'aerosollidar', color: 0xf87171, pos: [-2.5, 8], desc: '激光遥感气溶胶浓度与垂直分布、混合层高度。' },
+  { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, pos: [2.5, 8], desc: '湍流散射连续获取水平/垂直风场廓线。' },
+  { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, pos: [7.5, 8], desc: '导航卫星信号反演大气可降水量等参数。' },
+  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, pos: [12.5, 8], desc: '多普勒激光获取三维风矢量与风廓线。' },
+  { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, pos: [0, 16], desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。' }
 ]
 
 let renderer: any, scene: any, camera: any, controls: any, labelRenderer: any
@@ -66,6 +73,25 @@ function makeHead(type: string, THREE: any, color: number) {
     for (let i = -1; i <= 1; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.1), mat); b.position.set(i * 0.4, 0, 0); g.add(b) }
   } else if (type === 'deep') {
     g.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.6, 0.5), mat))
+  } else if (type === 'cloudradar') {
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.7), mat))
+    const dish = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 10, 24), mat); dish.position.y = 0.6; g.add(dish)
+  } else if (type === 'radiometer') {
+    const dish = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.6, 22, 1, true), mat); dish.rotation.x = Math.PI; dish.position.y = 0.3; g.add(dish)
+  } else if (type === 'aerosollidar') {
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.1, 16), mat))
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.9, 14), mat); beam.position.y = 1.0; g.add(beam)
+  } else if (type === 'windprofiler') {
+    for (let i = -1; i <= 1; i++) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 0.12), mat); a.position.set(i * 0.55, 0.1, 0); g.add(a) }
+  } else if (type === 'gnssmet') {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 10, 24), mat); ring.rotation.x = Math.PI / 2.4; g.add(ring)
+  } else if (type === 'lidarwind') {
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.9), mat))
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 14), mat); eye.position.y = 0.5; g.add(eye)
+  } else if (type === 'weathermod') {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.0, 14), mat); body.position.y = 0.2; g.add(body)
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 14), mat); nose.position.y = 0.9; g.add(nose)
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.04), mat); fin.position.y = -0.2; g.add(fin)
   } else {
     g.add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), mat))
   }
@@ -114,19 +140,19 @@ async function init() {
   const p2 = new THREE.PointLight(0xa855f7, 70, 80); p2.position.set(-14, 12, -10); scene.add(p2)
 
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(20, 64),
+    new THREE.CircleGeometry(24, 64),
     new THREE.MeshStandardMaterial({ color: 0x0a1326, metalness: 0.2, roughness: 0.9 })
   )
   ground.rotation.x = -Math.PI / 2
   scene.add(ground)
 
-  const grid = new THREE.GridHelper(40, 40, 0x22d3ee, 0x16324a)
+  const grid = new THREE.GridHelper(48, 48, 0x22d3ee, 0x16324a)
   ;(grid.material as any).opacity = 0.3
   ;(grid.material as any).transparent = true
   scene.add(grid)
 
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(18, 0.08, 12, 100),
+    new THREE.TorusGeometry(22, 0.08, 12, 100),
     new THREE.MeshBasicMaterial({ color: 0x22d3ee })
   )
   ring.rotation.x = -Math.PI / 2
