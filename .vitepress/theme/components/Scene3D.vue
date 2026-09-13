@@ -5,34 +5,74 @@ import { useRouter } from 'vitepress'
 const router = useRouter()
 const container = ref<HTMLDivElement | null>(null)
 const selected = ref<any>(null)
+const loading = ref(true)
+const errorMsg = ref('')
 
-// 观测场设备布置（x, z 平面坐标；y 为离地高度），18 类仪器按 6×3 网格排布
-const EQUIPMENTS = [
-  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, pos: [-12.5, -8], desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。' },
-  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, pos: [-7.5, -8], desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。' },
-  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, pos: [-2.5, -8], desc: '翻斗计数，计量降水量，反演降雨强度。' },
-  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, pos: [2.5, -8], desc: '散射法测量气象光学视程（MOR）。' },
-  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, pos: [7.5, -8], desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。' },
-  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, pos: [12.5, -8], desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。' },
-  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, pos: [-12.5, 0], desc: '测地面温度及 5/10/15/20cm 浅层地温。' },
-  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, pos: [-7.5, 0], desc: '记录太阳实际照射时数。' },
-  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, pos: [-2.5, 0], desc: '距地 6cm 测草面温度，用于霜冻预警。' },
-  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, pos: [2.5, 0], desc: '测 40/80/160/320cm 深层地温。' },
-  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, pos: [7.5, 0], desc: 'E-601 蒸发皿，观测水面蒸发量。' },
-  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, pos: [12.5, 0], desc: '测量本站气压，用于天气形势分析。' },
-  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, pos: [-12.5, 8], desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。' },
-  { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, pos: [-7.5, 8], desc: '被动微波遥感，连续获取温湿廓线与云水含量。' },
-  { id: 'aerosollidar', name: '气溶胶激光雷达', type: 'aerosollidar', color: 0xf87171, pos: [-2.5, 8], desc: '激光遥感气溶胶浓度与垂直分布、混合层高度。' },
-  { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, pos: [2.5, 8], desc: '湍流散射连续获取水平/垂直风场廓线。' },
-  { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, pos: [7.5, 8], desc: '导航卫星信号反演大气可降水量等参数。' },
-  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, pos: [12.5, 8], desc: '多普勒激光获取三维风矢量与风廓线。' },
-  { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, pos: [0, 16], desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。' }
+const BASE = import.meta.env.BASE_URL
+const FIELD_SIZE = 25 // 观测场边长（米），原点(0,0)在西南角，X东、Y北
+
+// 全部设备（与 equipment/*.md 一一对应）
+const FULL: any[] = [
+  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。' },
+  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。' },
+  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, desc: '翻斗计数 / 称重计量降水量，反演降水强度。' },
+  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, desc: '散射法测量气象光学视程（MOR）。' },
+  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。' },
+  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。' },
+  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, desc: '测地面温度及 5/10/15/20cm 浅层地温。' },
+  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, desc: '记录太阳实际照射时数。' },
+  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, desc: '距地 6cm 测草面温度，用于霜冻预警。' },
+  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, desc: '测 40/80/160/320cm 深层地温，反映土壤热状况。' },
+  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, desc: 'E-601 蒸发皿，观测水面蒸发量。' },
+  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, desc: '测量本站气压，用于天气形势分析。' },
+  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。' },
+  { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, desc: '被动微波遥感，连续获取温湿廓线与云水含量。' },
+  { id: 'aerosollidar', name: '气溶胶激光雷达', type: 'aerosollidar', color: 0xf87171, desc: '激光遥感气溶胶浓度与垂直分布、混合层高度。' },
+  { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, desc: '湍流散射连续获取水平/垂直风场廓线。' },
+  { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, desc: '导航卫星信号反演大气可降水量等参数。' },
+  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, desc: '多普勒激光获取三维风矢量与风廓线。' },
+  { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。' }
 ]
 
-let renderer: any, scene: any, camera: any, controls: any, labelRenderer: any
+// 设备布局（gx 东向、gy 北向，原点西南角），按观测场布局图摆放
+const placeMap: any[] = [
+  { x: 4.5, y: 22.5, id: 'windprofiler', label: '人工观测风' },
+  { x: 12.5, y: 22.5, id: 'phenom', label: '电线积冰架' },
+  { x: 20.5, y: 22.5, id: 'wind', label: '风塔', height: 10 },
+  { x: 4.5, y: 19.5, id: 'th', label: '备份百叶箱' },
+  { x: 8.5, y: 19.5, id: 'radiometer', label: '温湿度自记' },
+  { x: 16.5, y: 19.5, id: 'cloudradar', label: '温湿度表' },
+  { x: 20.5, y: 19.5, id: 'visibility', label: '温湿传感器' },
+  { x: 4.5, y: 16.5, id: 'precip', label: '人工雨量筒' },
+  { x: 8.5, y: 16.5, id: 'rainfall', label: '雨量传感器' },
+  { x: 16.5, y: 16.5, id: 'pressure', label: '翻斗雨量计' },
+  { x: 20.5, y: 16.5, id: 'gnssmet', label: '闪电定位仪' },
+  { x: 4.5, y: 13.5, id: 'evap', label: '大型蒸发' },
+  { x: 8.5, y: 13.5, id: 'grass', label: '小型蒸发' },
+  { x: 12.5, y: 13.5, id: 'aerosollidar', label: '蒸发专用雨量筒' },
+  { x: 20.5, y: 13.5, id: 'weathermod', label: '酸雨采集桶' },
+  { x: 4.5, y: 10.5, id: 'ground', label: '地温场' },
+  { x: 8.5, y: 10.5, id: 'sunshine', label: '日照' },
+  { x: 12.5, y: 10.5, id: 'deep', label: '深层地温' },
+  { x: 16.5, y: 10.5, id: 'lidarwind', label: '自动观测' }
+]
+
+// 道路（gx 东向、gy 北向）
+const ROADS: any[] = [
+  { x1: 11, x2: 14, y1: 0, y2: 25, name: '纵向主路' },
+  { x1: 2, x2: 23, y1: 20, y2: 23, name: '北部横向路' },
+  { x1: 0, x2: 25, y1: 12, y2: 15, name: '中部横向路' },
+  { x1: 3, x2: 22, y1: 4, y2: 7, name: '南部横向路' }
+]
+
+// 地面坐标 → 世界坐标（X 东不变，北向 Y 映射到 -Z）
+const toWorld = (gx: number, gy: number): [number, number] => [gx, -(gy - FIELD_SIZE / 2)]
+
+let renderer: any, scene: any, camera: any, controls: any, labelRenderer: any, tcontrols: any
 let raycaster: any, pointer: any, clock: any, animId = 0
 const groups: any[] = []
 let hovered: any = null
+let dragging = false
 
 const go = (link: string) => router.go(link)
 
@@ -98,19 +138,90 @@ function makeHead(type: string, THREE: any, color: number) {
   return g
 }
 
+function makeGroundTexture(THREE: any) {
+  const size = 1024
+  const canvas = document.createElement('canvas')
+  canvas.width = size; canvas.height = size
+  const m = (size - 64) / FIELD_SIZE
+  const pad = 32
+  // 地面坐标 (gx, gy) → canvas 像素
+  const cx = (gx: number) => pad + gx * m
+  const cy = (gy: number) => size - pad - gy * m
+
+  const c = canvas.getContext('2d')!
+
+  // 草地底色
+  c.fillStyle = '#10b981'
+  c.fillRect(0, 0, size, size)
+
+  // 道路（水泥地砖色）
+  for (const r of ROADS) {
+    c.fillStyle = '#cbd5e1'
+    c.fillRect(cx(r.x1), cy(r.y2), (r.x2 - r.x1) * m, (r.y2 - r.y1) * m)
+    c.strokeStyle = '#94a3b8'
+    c.lineWidth = 2
+    c.strokeRect(cx(r.x1), cy(r.y2), (r.x2 - r.x1) * m, (r.y2 - r.y1) * m)
+  }
+
+  // 设备点位标记（彩色圆点 + 简称）
+  c.textAlign = 'center'; c.textBaseline = 'middle'
+  c.font = 'bold 12px sans-serif'
+  for (const p of placeMap) {
+    const meta = FULL.find((e) => e.id === p.id)!
+    const color = '#' + meta.color.toString(16).padStart(6, '0')
+    c.fillStyle = color
+    c.beginPath(); c.arc(cx(p.x), cy(p.y), 0.45 * m, 0, Math.PI * 2); c.fill()
+    c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.stroke()
+    c.fillStyle = '#1f2937'
+    c.fillText(p.label, cx(p.x), cy(p.y) + 0.9 * m)
+  }
+
+  // 中心标志
+  c.strokeStyle = '#f59e0b'; c.lineWidth = 4
+  c.beginPath(); c.arc(cx(12.5), cy(16.5), 0.3 * m, 0, Math.PI * 2); c.stroke()
+  c.fillStyle = '#f59e0b'; c.font = 'bold 14px sans-serif'
+  c.fillText('中心标志', cx(12.5), cy(16.5))
+
+  // 场地边框
+  c.strokeStyle = '#475569'; c.lineWidth = 5
+  c.strokeRect(pad, pad, size - 2 * pad, size - 2 * pad)
+
+  // 方位标识（北在上）
+  c.fillStyle = '#1f2937'; c.font = 'bold 28px sans-serif'
+  c.fillText('N', size / 2, pad + 22)
+  c.fillText('S', size / 2, size - pad - 22)
+  c.fillText('W', pad + 22, size / 2)
+  c.fillText('E', size - pad - 22, size / 2)
+
+  // 比例尺
+  c.fillStyle = '#1f2937'; c.font = 'bold 18px sans-serif'; c.textAlign = 'left'
+  c.fillText('0', pad + 6, size - pad - 12)
+  c.fillText('25m', pad + m * 25 - 56, size - pad - 12)
+  c.strokeStyle = '#1f2937'; c.lineWidth = 3
+  c.beginPath()
+  c.moveTo(pad + 6, size - pad - 28)
+  c.lineTo(pad + m * 25 - 6, size - pad - 28)
+  c.stroke()
+
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
 async function init() {
   const THREE = await import('three')
   const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js')
   const { CSS2DRenderer, CSS2DObject } = await import('three/examples/jsm/renderers/CSS2DRenderer.js')
+  const { TransformControls } = await import('three/examples/jsm/controls/TransformControls.js')
 
   const el = container.value!
   const w = el.clientWidth, h = el.clientHeight
 
   scene = new THREE.Scene()
-  scene.fog = new THREE.FogExp2(0x05070f, 0.02)
+  scene.fog = new THREE.FogExp2(0xbfdaf2, 0.004)
 
-  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 200)
-  camera.position.set(0, 16, 26)
+  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 400)
+  camera.position.set(12.5, 34, 26)
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
   renderer.setSize(w, h)
@@ -128,53 +239,81 @@ async function init() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
-  controls.minDistance = 10
-  controls.maxDistance = 55
-  controls.maxPolarAngle = Math.PI / 2.15
-  controls.target.set(0, 2, 0)
+  controls.minDistance = 12
+  controls.maxDistance = 140
+  controls.maxPolarAngle = Math.PI / 2.05
+  controls.target.set(12.5, 1, -8)
   controls.autoRotate = true
-  controls.autoRotateSpeed = 0.5
+  controls.autoRotateSpeed = 0.3
 
-  scene.add(new THREE.AmbientLight(0x88aaff, 0.5))
-  const p1 = new THREE.PointLight(0x22d3ee, 80, 80); p1.position.set(12, 16, 12); scene.add(p1)
-  const p2 = new THREE.PointLight(0xa855f7, 70, 80); p2.position.set(-14, 12, -10); scene.add(p2)
+  // 拖动控制（仅地面 X/Z 平移）
+  tcontrols = new TransformControls(camera, renderer.domElement)
+  tcontrols.setMode('translate')
+  if ('showY' in tcontrols) tcontrols.showY = false
+  tcontrols.setSize(0.9)
+  tcontrols.addEventListener('dragging-changed', (e: any) => {
+    dragging = e.value
+    controls.enabled = !e.value
+  })
+  const tHelper = (tcontrols as any).getHelper ? (tcontrols as any).getHelper() : tcontrols
+  scene.add(tHelper)
 
+  // 光照
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65))
+  scene.add(new THREE.HemisphereLight(0x87ceeb, 0x10b981, 0.45))
+  const dir = new THREE.DirectionalLight(0xffffff, 1.2)
+  dir.position.set(20, 40, 10)
+  scene.add(dir)
+
+  scene.background = new THREE.Color(0xbfdaf2)
+
+  // 地面（草地）
+  const groundTex = makeGroundTexture(THREE)
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(24, 64),
-    new THREE.MeshStandardMaterial({ color: 0x0a1326, metalness: 0.2, roughness: 0.9 })
+    new THREE.PlaneGeometry(FIELD_SIZE, FIELD_SIZE),
+    new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.9, metalness: 0.05 })
   )
   ground.rotation.x = -Math.PI / 2
   scene.add(ground)
 
-  const grid = new THREE.GridHelper(48, 48, 0x22d3ee, 0x16324a)
-  ;(grid.material as any).opacity = 0.3
-  ;(grid.material as any).transparent = true
-  scene.add(grid)
-
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(22, 0.08, 12, 100),
-    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
-  )
-  ring.rotation.x = -Math.PI / 2
-  scene.add(ring)
-
-  const starGeo = new THREE.BufferGeometry()
-  const starN = 600
-  const arr = new Float32Array(starN * 3)
-  for (let i = 0; i < starN; i++) {
-    arr[i * 3] = (Math.random() - 0.5) * 120
-    arr[i * 3 + 1] = Math.random() * 50 + 5
-    arr[i * 3 + 2] = (Math.random() - 0.5) * 120
+  // 道路实体（水泥）
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.85, metalness: 0.05 })
+  for (const r of ROADS) {
+    const [wx, wz] = toWorld((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2)
+    const road = new THREE.Mesh(
+      new THREE.BoxGeometry(r.x2 - r.x1, 0.04, r.y2 - r.y1),
+      roadMat
+    )
+    road.position.set(wx, 0.02, wz)
+    scene.add(road)
   }
-  starGeo.setAttribute('position', new THREE.BufferAttribute(arr, 3))
-  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x88ccff, size: 0.18, transparent: true, opacity: 0.8 })))
 
-  for (const e of EQUIPMENTS) {
+  // 围栏（深灰色），原点西南角，边界 X∈[0,25] Y∈[0,25]
+  const fenceMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.35, roughness: 0.5 })
+  const H = 1.2, T = 0.2, ext = 0.3
+  const north = new THREE.Mesh(new THREE.BoxGeometry(FIELD_SIZE + ext, H, T), fenceMat)
+  north.position.set(FIELD_SIZE / 2, H / 2, -FIELD_SIZE / 2); scene.add(north) // Y=25
+  const south = new THREE.Mesh(new THREE.BoxGeometry(FIELD_SIZE + ext, H, T), fenceMat)
+  south.position.set(FIELD_SIZE / 2, H / 2, FIELD_SIZE / 2); scene.add(south) // Y=0
+  const west = new THREE.Mesh(new THREE.BoxGeometry(T, H, FIELD_SIZE + ext), fenceMat)
+  west.position.set(0, H / 2, 0); scene.add(west) // X=0
+  const east = new THREE.Mesh(new THREE.BoxGeometry(T, H, FIELD_SIZE + ext), fenceMat)
+  east.position.set(FIELD_SIZE, H / 2, 0); scene.add(east) // X=25
+
+  // 设备
+  const list = FULL.map((e) => {
+    const slot = placeMap.find((s) => s.id === e.id)
+    return slot ? { ...e, pos: toWorld(slot.x, slot.y), label: slot.label, customHeight: slot.height } : { ...e, pos: [0, 0] }
+  })
+
+  for (const e of list) {
+    const [wx, wz] = e.pos
     const grp = new THREE.Group()
-    grp.position.set(e.pos[0], 0, e.pos[1])
+    grp.position.set(wx, 0, wz)
     grp.userData = e
 
-    const poleH = e.type === 'evap' ? 1.2 : 5
+    let poleH = e.type === 'deep' ? 1.4 : e.type === 'evap' ? 1.2 : 5
+    if (e.customHeight) poleH = e.customHeight
     const pole = new THREE.Mesh(
       new THREE.CylinderGeometry(0.12, 0.16, poleH, 12),
       new THREE.MeshStandardMaterial({ color: 0x4a5a78, metalness: 0.6, roughness: 0.4 })
@@ -189,10 +328,19 @@ async function init() {
     base.position.y = 0.1
     grp.add(base)
 
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(0.7, 1.0, 32),
+      new THREE.MeshBasicMaterial({ color: e.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
+    )
+    halo.rotation.x = -Math.PI / 2
+    halo.position.y = 0.03
+    grp.add(halo)
+
     const head = makeHead(e.type, THREE, e.color)
     head.position.y = poleH + (e.type === 'evap' ? 0.4 : 0.9)
     grp.add(head)
     grp.userData.head = head
+    grp.userData.headBaseY = head.position.y
     grp.userData.baseEmissive = 0.9
 
     const div = document.createElement('div')
@@ -216,6 +364,7 @@ async function init() {
   window.addEventListener('resize', onResize)
 
   clock = new THREE.Clock()
+  loading.value = false
   animate()
 }
 
@@ -227,6 +376,7 @@ function onResize() {
 }
 
 function onMove(ev: PointerEvent) {
+  if (dragging) return
   const rect = renderer.domElement.getBoundingClientRect()
   pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
   pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1
@@ -241,7 +391,7 @@ function onMove(ev: PointerEvent) {
   }
 }
 
-function onClick() { if (hovered) selectGroup(hovered) }
+function onClick() { if (hovered && !dragging) selectGroup(hovered) }
 
 function findGroup(obj: any): any {
   let o = obj
@@ -250,10 +400,11 @@ function findGroup(obj: any): any {
 }
 
 function selectGroup(grp: any) {
-  selected.value = { ...grp.userData, link: `/equipment/${grp.userData.id}` }
+  selected.value = { ...grp.userData }
   controls.autoRotate = false
   grp.userData.head.scale.setScalar(1.4)
   grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = 2.2 })
+  tcontrols.attach(grp)
 }
 
 function clearSelected() {
@@ -265,6 +416,7 @@ function clearSelected() {
     }
   }
   selected.value = null
+  tcontrols.detach()
   controls.autoRotate = true
 }
 
@@ -272,17 +424,24 @@ function animate() {
   animId = requestAnimationFrame(animate)
   const t = clock.getElapsedTime()
   groups.forEach((g, i) => {
-    if (g.userData.head) g.userData.head.position.y = (g.userData.type === 'evap' ? 1.6 : 5.9) + Math.sin(t * 1.2 + i) * 0.12
+    if (g.userData.head) g.userData.head.position.y = g.userData.headBaseY + Math.sin(t * 1.2 + i) * 0.12
   })
   controls.update()
   renderer.render(scene, camera)
   labelRenderer.render(scene, camera)
 }
 
-onMounted(init)
+onMounted(() => {
+  init().catch((e) => {
+    loading.value = false
+    errorMsg.value = e?.message || '初始化失败'
+  })
+})
+
 onBeforeUnmount(() => {
   cancelAnimationFrame(animId)
   window.removeEventListener('resize', onResize)
+  if (tcontrols) tcontrols.dispose?.()
   if (renderer) {
     renderer.domElement.removeEventListener('pointermove', onMove)
     renderer.domElement.removeEventListener('click', onClick)
@@ -300,15 +459,11 @@ onBeforeUnmount(() => {
     <div class="top-bar">
       <span class="sci-kicker">3D INTERACTIVE GUIDE</span>
       <h1>虚拟观测场导览</h1>
-      <p>拖拽旋转 · 滚轮缩放 · 点击设备查看详情</p>
+      <p>25m × 25m · 原点西南角 · 草地 + 水泥道路 + 围栏 · 点击设备可拖动</p>
     </div>
 
-    <div class="legend">
-      <button v-for="e in EQUIPMENTS" :key="e.id" class="leg-item" @click="go('/equipment/' + e.id)">
-        <span class="sw" :style="{ background: '#' + e.color.toString(16).padStart(6, '0') }"></span>
-        {{ e.name }}
-      </button>
-    </div>
+    <div v-if="loading" class="status">正在加载三维场景…</div>
+    <div v-if="errorMsg" class="status err">{{ errorMsg }}</div>
 
     <transition name="fade">
       <div v-if="selected" class="info-panel sci-card">
@@ -322,7 +477,7 @@ onBeforeUnmount(() => {
       </div>
     </transition>
 
-    <div class="hint">提示：点击场景中的设备立柱或标签均可弹出信息</div>
+    <div class="hint">提示：灰色为水泥道路（纵向主路 / 北·中·南横向路），绿色为草坪，深色为围栏；设备可拖动</div>
   </div>
 </template>
 
@@ -335,16 +490,8 @@ onBeforeUnmount(() => {
 .top-bar h1 { font-size: 24px; margin: 6px 0 4px; }
 .top-bar p { color: var(--vp-c-text-2); font-size: 13px; margin: 0; }
 
-.legend { position: absolute; left: 12px; top: 104px; z-index: 5; display: flex; flex-direction: column; gap: 6px; max-height: 60%; overflow: auto; }
-.leg-item {
-  display: flex; align-items: center; gap: 7px;
-  background: rgba(10,16,32,0.7); border: 1px solid var(--vp-c-divider);
-  color: var(--vp-c-text-1); border-radius: 999px; padding: 5px 11px;
-  font-size: 12px; cursor: pointer; backdrop-filter: blur(8px);
-  transition: border-color 0.2s, transform 0.2s;
-}
-.leg-item:hover { border-color: var(--sci-cyan); transform: translateX(3px); }
-.sw { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 7; color: var(--vp-c-text-2); font-size: 14px; }
+.status.err { color: #f87171; }
 
 .info-panel { position: absolute; right: 14px; bottom: 52px; z-index: 6; width: 300px; max-width: calc(100% - 28px); padding: 18px; }
 .info-panel h3 { margin: 6px 0 8px; font-size: 18px; }
@@ -356,11 +503,6 @@ onBeforeUnmount(() => {
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(10px); }
-
-@media (max-width: 720px) {
-  .legend { top: auto; bottom: 84px; left: 10px; flex-direction: row; flex-wrap: wrap; max-width: 70%; max-height: none; }
-  .info-panel { right: 10px; left: 10px; width: auto; bottom: 44px; }
-}
 </style>
 
 <style>

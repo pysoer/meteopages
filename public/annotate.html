@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>气象站设备点位标注工具</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      padding: 12px 20px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 16px; margin: 0; }
+    .btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn.secondary { background: #475569; }
+    .btn.secondary:hover { background: #334155; }
+    input[type="file"] { display: none; }
+    .hint { color: #94a3b8; font-size: 12px; }
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    #canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #020617;
+      position: relative;
+    }
+    canvas { cursor: crosshair; background: #000; max-width: 100%; }
+    aside {
+      width: 280px;
+      background: #1e293b;
+      border-left: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel { padding: 16px; border-bottom: 1px solid #334155; }
+    .panel h2 { font-size: 14px; margin: 0 0 10px; }
+    #point-list { list-style: none; padding: 0; margin: 0; max-height: 360px; overflow: auto; }
+    #point-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      margin-bottom: 6px;
+      background: #0f172a;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    #point-list li .idx {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: #ef4444;
+      color: white;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    #point-list li input {
+      flex: 1;
+      background: transparent;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    #point-list li button {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    #point-list li button:hover { color: #ef4444; }
+    .empty { color: #64748b; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>设备点位标注工具</h1>
+    <label class="btn"><input type="file" id="upload" accept="image/*">上传图片</label>
+    <button class="btn secondary" id="clear">清空标注</button>
+    <button class="btn" id="export-img">导出标注图</button>
+    <button class="btn secondary" id="export-json">导出坐标 JSON</button>
+    <span class="hint">操作：点击图片添加红点，右侧可编辑设备名称</span>
+  </header>
+  <main>
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <aside>
+      <div class="panel">
+        <h2>已标注点位</h2>
+        <ul id="point-list"></ul>
+        <p class="empty" id="empty-text">暂无标注</p>
+      </div>
+      <div class="panel">
+        <h2>说明</h2>
+        <p class="empty">
+          1. 上传观测场照片<br>
+          2. 在图上点击设备位置<br>
+          3. 右侧填写设备名称<br>
+          4. 导出标注图后即可用于 3D 生成
+        </p>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const upload = document.getElementById('upload');
+    const clearBtn = document.getElementById('clear');
+    const exportImgBtn = document.getElementById('export-img');
+    const exportJsonBtn = document.getElementById('export-json');
+    const pointList = document.getElementById('point-list');
+    const emptyText = document.getElementById('empty-text');
+
+    let image = null;
+    let points = [];
+
+    function render() {
+      if (!image) return;
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0);
+      points.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(i + 1, p.x + 14, p.y + 5);
+      });
+    }
+
+    function updateList() {
+      pointList.innerHTML = '';
+      emptyText.style.display = points.length ? 'none' : 'block';
+      points.forEach((p, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="idx">${i + 1}</span>
+          <input value="${p.name}" data-idx="${i}" placeholder="设备名称">
+          <button data-del="${i}">×</button>`;
+        pointList.appendChild(li);
+      });
+    }
+
+    upload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        image = new Image();
+        image.onload = () => {
+          points = [];
+          render();
+          updateList();
+        };
+        image.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    canvas.addEventListener('click', (e) => {
+      if (!image) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      points.push({ x, y, name: `设备${points.length + 1}` });
+      render();
+      updateList();
+    });
+
+    pointList.addEventListener('input', (e) => {
+      if (e.target.tagName === 'INPUT') {
+        const idx = +e.target.dataset.idx;
+        points[idx].name = e.target.value;
+      }
+    });
+
+    pointList.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') {
+        const idx = +e.target.dataset.del;
+        points.splice(idx, 1);
+        render();
+        updateList();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      points = [];
+      render();
+      updateList();
+    });
+
+    exportImgBtn.addEventListener('click', () => {
+      if (!image) return alert('请先上传图片');
+      const link = document.createElement('a');
+      link.download = 'annotated-station.jpg';
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    });
+
+    exportJsonBtn.addEventListener('click', () => {
+      if (!image) return alert('请先上传图片');
+      const data = {
+        imageWidth: image.naturalWidth,
+        imageHeight: image.naturalHeight,
+        points: points
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.download = 'points.json';
+      link.href = URL.createObjectURL(blob);
+      link.click();
+    });
+
+    // 默认加载传入的图片路径可在此修改
+  </script>
+</body>
+</html>
