@@ -13,6 +13,7 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '3D 导览', link: '/guide' },
+      { text: '道路绘制', link: '/road-planner.html' },
       {
         text: '观测设备',
         items: [

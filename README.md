@@ -34,7 +34,9 @@ meteopages/
 │   └── visibility.md
 └── public/
     ├── images/                   # 设备实拍图（可选）
-    └── videos/                   # 演示视频（可选）
+    ├── videos/                   # 演示视频（可选）
+    ├── road-planner.html         # 观测场道路绘制工具（25m×25m + 0.5m 虚线网格）
+    └── roads.json                # 工具导出的道路布局（可选，存在时优先于内置布局）
 ```
 
 ## 本地运行
@@ -72,6 +74,14 @@ npm run preview  # 预览构建产物
 2. 在对应设备页的 `<EquipmentPage>` 上增加 `video="/videos/th.mp4"`
 
 未提供 `video` 时，页面显示带播放按钮的占位区块，提示后续补录。
+
+### 绘制观测场道路（步道 / 便道）
+
+1. 打开 `/road-planner.html`（本地：`http://localhost:5173/road-planner.html`，导航栏「道路绘制」）
+2. 画布为 **25m × 25m** 场地框，内含 **0.5m 间隔虚线网格**（可切换 1m / 0.25m、可吸附）
+3. 用「矩形道路 / 折线道路 / 设备便道」在框内绘制：拖动或点击，右侧面板可改宽度、删除元素
+4. 导出 `roads.json` 放进 `public/` 目录，3D 导览页会自动加载；也可导出 TS 片段直接粘贴代码
+5. 坐标系与 3D 场景一致：原点西南角，X 东、Y 北，单位 m
 
 ### 新增一台设备
 

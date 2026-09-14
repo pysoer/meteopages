@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>观测场道路绘制工具 · 25m × 25m</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      padding: 10px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      gap: 10px 14px;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 15px; margin: 0 8px 0 0; white-space: nowrap; }
+    .group { display: flex; align-items: center; gap: 6px; }
+    .group > label { color: #94a3b8; font-size: 12px; }
+    .sep { width: 1px; height: 22px; background: #334155; }
+    .btn {
+      background: #3b82f6; color: #fff; border: none; padding: 7px 12px;
+      border-radius: 6px; cursor: pointer; font-size: 12.5px;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn.gray { background: #475569; }
+    .btn.gray:hover { background: #334155; }
+    .btn.ghost { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
+    .btn.ghost:hover { border-color: #3b82f6; color: #93c5fd; }
+    .btn.active { background: #22d3ee; color: #062b33; font-weight: 600; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    input[type="number"] {
+      width: 62px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+      padding: 6px 6px; border-radius: 5px; font-size: 12.5px;
+    }
+    input[type="checkbox"] { accent-color: #22d3ee; }
+    .toolbar-sep { flex: 1; }
+    main { flex: 1; display: flex; overflow: hidden; }
+    #canvas-wrap {
+      flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center;
+      background: #020617; position: relative; padding: 8px;
+    }
+    canvas { cursor: crosshair; border-radius: 4px; }
+    aside {
+      width: 320px; background: #1e293b; border-left: 1px solid #334155;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel { padding: 12px 14px; border-bottom: 1px solid #334155; }
+    .panel h2 { font-size: 13px; margin: 0 0 10px; color: #cbd5e1; display: flex; justify-content: space-between; }
+    .panel.grow { flex: 1; overflow: auto; }
+    #pos { font-size: 12px; color: #94a3b8; line-height: 1.8; }
+    #pos b { color: #22d3ee; font-weight: 600; }
+    #item-list { list-style: none; padding: 0; margin: 0; }
+    #item-list li {
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px; margin-bottom: 6px;
+      background: #0f172a; border: 1px solid transparent; border-radius: 6px; font-size: 12px; cursor: pointer;
+    }
+    #item-list li.active { border-color: #22d3ee; }
+    #item-list li .tag {
+      font-size: 10.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; color: #04121a; font-weight: 600;
+    }
+    #item-list li .tag.t-rect { background: #93c5fd; }
+    #item-list li .tag.t-path { background: #86efac; }
+    #item-list li .tag.t-pad { background: #fcd34d; }
+    #item-list li input { width: 58px; padding: 3px 4px; font-size: 12px; }
+    #item-list li .meta { flex: 1; color: #94a3b8; font-size: 11px; }
+    #item-list li button { background: none; border: 0; color: #94a3b8; cursor: pointer; font-size: 15px; line-height: 1; }
+    #item-list li button:hover { color: #ef4444; }
+    .empty { color: #64748b; font-size: 12px; line-height: 1.7; }
+    textarea {
+      width: 100%; height: 170px; background: #0b1220; color: #a5f3fc; border: 1px solid #334155;
+      border-radius: 6px; padding: 8px; font-family: Consolas, "Courier New", monospace; font-size: 11px; resize: vertical;
+    }
+    .out-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .tip { color: #64748b; font-size: 11.5px; line-height: 1.7; margin: 8px 0 0; }
+    kbd { background: #0f172a; border: 1px solid #334155; border-radius: 3px; padding: 0 4px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>观测场道路绘制 · 25m × 25m</h1>
+
+    <div class="group">
+      <button class="btn active" data-mode="select">选择 / 移动</button>
+      <button class="btn gray" data-mode="rect">矩形道路</button>
+      <button class="btn gray" data-mode="path">折线道路</button>
+      <button class="btn gray" data-mode="pad">设备便道</button>
+    </div>
+
+    <div class="sep"></div>
+    <div class="group">
+      <label>路宽(m)</label><input type="number" id="width" step="0.1" min="0.1" value="0.6">
+      <label>便道边长(m)</label><input type="number" id="padSize" step="0.1" min="0.2" value="1.4">
+    </div>
+
+    <div class="group">
+      <label>网格(m)</label>
+      <select id="step" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:6px;font-size:12.5px">
+        <option value="0.5" selected>0.5</option>
+        <option value="1">1</option>
+        <option value="0.25">0.25</option>
+      </select>
+      <label><input type="checkbox" id="snap" checked> 吸附</label>
+      <label><input type="checkbox" id="showGrid" checked> 虚线网格</label>
+    </div>
+
+    <div class="sep"></div>
+    <div class="group">
+      <button class="btn ghost" id="undo">撤销</button>
+      <button class="btn ghost" id="redo">重做</button>
+      <button class="btn ghost" id="finish">结束折线</button>
+      <button class="btn ghost" id="clear">清空</button>
+    </div>
+
+    <div class="toolbar-sep"></div>
+    <button class="btn gray" id="importBtn">导入 JSON</button>
+    <button class="btn" id="download">导出 roads.json</button>
+    <input type="file" id="file" accept=".json,application/json" style="display:none">
+  </header>
+
+  <main>
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <aside>
+      <div class="panel">
+        <h2>坐标（原点：西南角）</h2>
+        <div id="pos">移动鼠标查看坐标 · 单位 m</div>
+        <p class="tip">
+          X 向东、Y 向北，与 3D 场景一致。<br>
+          <kbd>Delete</kbd> 删除选中 · <kbd>Ctrl+Z</kbd> 撤销 · 折线 <kbd>双击/右键/Enter</kbd> 结束
+        </p>
+      </div>
+
+      <div class="panel grow">
+        <h2><span>已绘制元素</span><span id="count" style="color:#64748b">0</span></h2>
+        <ul id="item-list"></ul>
+        <p class="empty" id="empty-text">暂无元素。选择“矩形道路/折线道路/设备便道”后在左侧场地内绘制。</p>
+      </div>
+
+      <div class="panel">
+        <h2><span>导出结果</span>
+          <span class="group">
+            <button class="btn ghost" id="tab-json">JSON</button>
+            <button class="btn ghost" id="tab-ts">TS 片段</button>
+          </span>
+        </h2>
+        <textarea id="out" readonly></textarea>
+        <div class="out-btns">
+          <button class="btn gray" id="copy">复制</button>
+          <button class="btn gray" id="png">导出 PNG</button>
+        </div>
+        <p class="tip">将导出的 <b>roads.json</b> 放入项目 <b>public/</b> 目录，3D 导览页会自动加载。</p>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // ============ 基本参数 ============
+    const FIELD = 25;                 // 场地边长（米）
+    const $ = (id) => document.getElementById(id);
+    const canvas = $('canvas');
+    const ctx = canvas.getContext('2d');
+    const wrap = $('canvas-wrap');
+
+    const state = {
+      mode: 'select',
+      items: [],
+      selectedId: null,
+      width: 0.6,
+      padSize: 1.4,
+      step: 0.5,
+      snap: true,
+      showGrid: true,
+      draft: null
+    };
+
+    let nextId = 1;
+    const undoStack = [], redoStack = [];
+
+    // ============ 视图变换（canvas 顶部=北，左侧=西）============
+    let S = 30, OX = 36, OY = 26, CSSW = 0, CSSH = 0;
+    const toScreen = (gx, gy) => [OX + gx * S, OY + (FIELD - gy) * S];
+    const toGround = (px, py) => ({ x: (px - OX) / S, y: FIELD - (py - OY) / S });
+    const r3 = (v) => +v.toFixed(3);
+    const snapVal = (v) => state.snap ? r3(Math.round(v / state.step) * state.step) : r3(v);
+    const snapPt = (p) => ({ x: snapVal(p.x), y: snapVal(p.y) });
+
+    function fit() {
+      const avail = Math.min(wrap.clientWidth - 20, wrap.clientHeight - 20);
+      S = Math.max(8, Math.floor((avail - 56) / FIELD));
+      CSSW = OX + FIELD * S + 20;
+      CSSH = OY + FIELD * S + 20;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = CSSW + 'px';
+      canvas.style.height = CSSH + 'px';
+      canvas.width = Math.round(CSSW * dpr);
+      canvas.height = Math.round(CSSH * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      render();
+    }
+
+    // ============ 绘制 ============
+    function render() {
+      ctx.clearRect(0, 0, CSSW, CSSH);
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0, 0, CSSW, CSSH);
+
+      const [fx, fy] = toScreen(0, FIELD);
+      ctx.fillStyle = '#153a2c';
+      ctx.fillRect(fx, fy, FIELD * S, FIELD * S);
+
+      if (state.showGrid) drawGrid();
+      drawFrame();
+      drawRuler();
+
+      for (const it of state.items) drawItem(it, it.id === state.selectedId);
+      drawDraft();
+    }
+
+    function drawGrid() {
+      const step = state.step;
+      const [x0, yTop] = toScreen(0, FIELD);
+      const [x1, yBot] = toScreen(FIELD, 0);
+      ctx.save();
+      ctx.lineWidth = 1;
+      const n = Math.round(FIELD / step);
+      for (let i = 0; i <= n; i++) {
+        const v = r3(i * step);
+        if (v > FIELD + 1e-6) break;
+        const per5 = Math.abs(v % 5) < 1e-6;
+        const per1 = Math.abs(v % 1) < 1e-6;
+        ctx.strokeStyle = per5 ? 'rgba(160,220,255,0.42)' : per1 ? 'rgba(160,220,255,0.26)' : 'rgba(160,220,255,0.13)';
+        ctx.setLineDash(per5 ? [7, 4] : [3, 5]);
+
+        const sx = OX + v * S;
+        ctx.beginPath(); ctx.moveTo(sx, yTop); ctx.lineTo(sx, yBot); ctx.stroke();
+
+        const sy = OY + (FIELD - v) * S;
+        ctx.beginPath(); ctx.moveTo(x0, sy); ctx.lineTo(x1, sy); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawFrame() {
+      const [x, y] = toScreen(0, FIELD);
+      ctx.save();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, FIELD * S, FIELD * S);
+      // 方位
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(226,232,240,0.85)';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('N', x + FIELD * S / 2, y + 14);
+      ctx.restore();
+    }
+
+    function drawRuler() {
+      const labelStep = S >= 22 ? 1 : S >= 12 ? 2 : 5;
+      ctx.save();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let v = 0; v <= FIELD; v += labelStep) {
+        const sx = OX + v * S;
+        ctx.fillText(String(v), sx, OY - 12);
+        const sy = OY + (FIELD - v) * S;
+        ctx.textAlign = 'right';
+        ctx.fillText(String(v), OX - 8, sy);
+        ctx.textAlign = 'center';
+      }
+      ctx.restore();
+    }
+
+    function drawRectShape(x1, y1, x2, y2, selected) {
+      const [sx, sy] = toScreen(Math.min(x1, x2), Math.max(y1, y2));
+      const w = Math.abs(x2 - x1) * S, h = Math.abs(y2 - y1) * S;
+      if (w < 0.5 || h < 0.5) return;
+      ctx.fillStyle = '#d8dede';
+      ctx.fillRect(sx, sy, w, h);
+      ctx.strokeStyle = selected ? '#f59e0b' : '#b8c2c6';
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.setLineDash([]);
+      ctx.strokeRect(sx, sy, w, h);
+    }
+
+    function drawPathShape(points, width, selected) {
+      if (!points || points.length < 2) return;
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const [x, y] = toScreen(p[0], p[1]);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.setLineDash([]);
+      ctx.strokeStyle = selected ? '#f59e0b' : '#b8c2c6';
+      ctx.lineWidth = Math.max(width * S, 1) + 2;
+      ctx.stroke();
+      ctx.strokeStyle = '#d8dede';
+      ctx.lineWidth = Math.max(width * S, 1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawItem(it, selected) {
+      if (it.type === 'rect') drawRectShape(it.x1, it.y1, it.x2, it.y2, selected);
+      else if (it.type === 'path') {
+        drawPathShape(it.points, it.width, selected);
+        if (selected) {
+          ctx.save();
+          ctx.fillStyle = '#f59e0b';
+          for (const p of it.points) {
+            const [x, y] = toScreen(p[0], p[1]);
+            ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+        }
+      } else if (it.type === 'pad') {
+        const h = it.size / 2;
+        const [sx, sy] = toScreen(it.x - h, it.y + h);
+        const s = it.size * S;
+        ctx.fillStyle = '#cdd4d6';
+        ctx.fillRect(sx, sy, s, s);
+        ctx.setLineDash([]);
+        ctx.strokeStyle = selected ? '#f59e0b' : '#aeb9bc';
+        ctx.lineWidth = selected ? 2 : 1;
+        ctx.strokeRect(sx, sy, s, s);
+      }
+    }
+
+    function drawDraft() {
+      const d = state.draft;
+      if (!d) return;
+      if (d.type === 'rect') drawRectShape(d.x1, d.y1, d.x2, d.y2, true);
+      else if (d.type === 'path') {
+        if (state.cursor) drawPathShape(d.points.concat([state.cursor]), state.width, true);
+        else drawPathShape(d.points, state.width, true);
+        ctx.save();
+        ctx.fillStyle = '#22d3ee';
+        for (const p of d.points) {
+          const [x, y] = toScreen(p[0], p[1]);
+          ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    // ============ 历史记录 ============
+    function snapshot() {
+      undoStack.push(JSON.stringify(state.items));
+      if (undoStack.length > 100) undoStack.shift();
+      redoStack.length = 0;
+    }
+    function undo() {
+      if (!undoStack.length) return;
+      redoStack.push(JSON.stringify(state.items));
+      restore(undoStack.pop());
+    }
+    function redo() {
+      if (!redoStack.length) return;
+      undoStack.push(JSON.stringify(state.items));
+      restore(redoStack.pop());
+    }
+    function restore(str) {
+      state.items = JSON.parse(str);
+      nextId = state.items.reduce((m, it) => Math.max(m, it.id || 0), 0) + 1;
+      if (!state.items.some((it) => it.id === state.selectedId)) state.selectedId = null;
+      syncPanel();
+      render();
+    }
+
+    // ============ 元素操作 ============
+    function addItem(it) {
+      it.id = nextId++;
+      state.items.push(it);
+      state.selectedId = it.id;
+      syncPanel();
+      render();
+    }
+
+    function distToSeg(p, a, b) {
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const l2 = dx * dx + dy * dy;
+      if (l2 === 0) return Math.hypot(p.x - a[0], p.y - a[1]);
+      let t = ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (a[0] + t * dx), p.y - (a[1] + t * dy));
+    }
+
+    function hitTest(g) {
+      for (let i = state.items.length - 1; i >= 0; i--) {
+        const it = state.items[i];
+        if (it.type === 'rect') {
+          if (g.x >= Math.min(it.x1, it.x2) && g.x <= Math.max(it.x1, it.x2) &&
+              g.y >= Math.min(it.y1, it.y2) && g.y <= Math.max(it.y1, it.y2)) return it;
+        } else if (it.type === 'pad') {
+          const h = it.size / 2;
+          if (Math.abs(g.x - it.x) <= h && Math.abs(g.y - it.y) <= h) return it;
+        } else if (it.type === 'path') {
+          const tol = Math.max(it.width, 0.4) / 2;
+          for (let k = 0; k < it.points.length - 1; k++) {
+            if (distToSeg(g, it.points[k], it.points[k + 1]) <= tol) return it;
+          }
+        }
+      }
+      return null;
+    }
+
+    function translate(it, dx, dy) {
+      if (it.type === 'rect') { it.x1 += dx; it.x2 += dx; it.y1 += dy; it.y2 += dy; }
+      else if (it.type === 'pad') { it.x += dx; it.y += dy; }
+      else if (it.type === 'path') it.points = it.points.map((p) => [r3(p[0] + dx), r3(p[1] + dy)]);
+    }
+
+    function thickOf(it) {
+      if (it.type === 'pad') return it.size;
+      if (it.type === 'path') return it.width;
+      return r3(Math.min(Math.abs(it.x2 - it.x1), Math.abs(it.y2 - it.y1)));
+    }
+
+    function setThick(it, v) {
+      if (it.type === 'pad') it.size = v;
+      else if (it.type === 'path') it.width = v;
+      else {
+        if (Math.abs(it.x2 - it.x1) <= Math.abs(it.y2 - it.y1)) {
+          const c = (it.x1 + it.x2) / 2; it.x1 = r3(c - v / 2); it.x2 = r3(c + v / 2);
+        } else {
+          const c = (it.y1 + it.y2) / 2; it.y1 = r3(c - v / 2); it.y2 = r3(c + v / 2);
+        }
+      }
+    }
+
+    const typeName = (t) => t === 'rect' ? '矩形道路' : t === 'path' ? '折线道路' : '设备便道';
+
+    function metaOf(it) {
+      if (it.type === 'rect') {
+        return `${r3(Math.abs(it.x2 - it.x1))} × ${r3(Math.abs(it.y2 - it.y1))} m @ (${r3(Math.min(it.x1, it.x2))},${r3(Math.min(it.y1, it.y2))})`;
+      }
+      if (it.type === 'pad') return `${it.size} m 见方 @ (${it.x},${it.y})`;
+      return `${it.points.length} 点 · 宽 ${it.width} m`;
+    }
+
+    // ============ 右侧面板 ============
+    let outMode = 'json';
+
+    function syncPanel() {
+      const list = $('item-list');
+      list.innerHTML = '';
+      state.items.forEach((it) => {
+        const li = document.createElement('li');
+        if (it.id === state.selectedId) li.className = 'active';
+        li.innerHTML =
+          `<span class="tag t-${it.type}">${typeName(it.type)}</span>` +
+          `<input type="number" step="0.1" min="0.1" value="${thickOf(it)}" data-thick="${it.id}">` +
+          `<span class="meta">${metaOf(it)}</span>` +
+          `<button data-del="${it.id}">×</button>`;
+        li.onclick = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+          state.selectedId = it.id; syncPanel(); render();
+        };
+        list.appendChild(li);
+      });
+      $('empty-text').style.display = state.items.length ? 'none' : 'block';
+      $('count').textContent = state.items.length;
+      $('undo').disabled = !undoStack.length;
+      $('redo').disabled = !redoStack.length;
+      updateOutput();
+    }
+
+    let editPending = false;
+    $('item-list').addEventListener('focusin', () => { editPending = false; });
+    $('item-list').addEventListener('input', (e) => {
+      const id = +e.target.dataset.thick;
+      if (!id) return;
+      if (!editPending) { snapshot(); editPending = true; }
+      const it = state.items.find((i) => i.id === id);
+      const v = parseFloat(e.target.value);
+      if (!it || !isFinite(v) || v <= 0) return;
+      setThick(it, +v.toFixed(2));
+      render();
+      updateOutput();
+    });
+    $('item-list').addEventListener('click', (e) => {
+      const id = +e.target.dataset.del;
+      if (!id) return;
+      snapshot();
+      state.items = state.items.filter((i) => i.id !== id);
+      if (state.selectedId === id) state.selectedId = null;
+      syncPanel();
+      render();
+    });
+
+    // ============ 导出 ============
+    function exportItem(it) {
+      if (it.type === 'rect') {
+        return {
+          type: 'rect', name: typeName(it.type),
+          x1: r3(Math.min(it.x1, it.x2)), y1: r3(Math.min(it.y1, it.y2)),
+          x2: r3(Math.max(it.x1, it.x2)), y2: r3(Math.max(it.y1, it.y2))
+        };
+      }
+      if (it.type === 'pad') return { type: 'pad', name: typeName(it.type), x: r3(it.x), y: r3(it.y), size: r3(it.size) };
+      return { type: 'path', name: typeName(it.type), width: r3(it.width), points: it.points.map((p) => [r3(p[0]), r3(p[1])]) };
+    }
+
+    function exportData() {
+      return {
+        version: 1,
+        field: { width: FIELD, height: FIELD, unit: 'm', origin: 'southwest', axes: { x: 'east', y: 'north' } },
+        items: state.items.map(exportItem)
+      };
+    }
+
+    function tsSnippet() {
+      const lines = state.items.map((it) => {
+        const o = exportItem(it);
+        return '  { ' + Object.keys(o).map((k) => `${k}: ${JSON.stringify(o[k])}`).join(', ') + ' }';
+      });
+      return [
+        '// 观测场道路布局（由 public/road-planner.html 导出）',
+        '// 坐标系：原点西南角，X 东、Y 北，单位 m，场地 25m × 25m',
+        'export const ROAD_LAYOUT = [',
+        lines.join(',\n'),
+        ']'
+      ].join('\n');
+    }
+
+    function updateOutput() {
+      $('out').value = outMode === 'json' ? JSON.stringify(exportData(), null, 2) : tsSnippet();
+    }
+
+    function download(name, text, mime) {
+      const blob = new Blob([text], { type: mime || 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    $('download').onclick = () => {
+      if (!state.items.length) return alert('还没有绘制任何道路');
+      download('roads.json', JSON.stringify(exportData(), null, 2));
+    };
+    $('copy').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText($('out').value);
+        const b = $('copy'); b.textContent = '已复制'; setTimeout(() => (b.textContent = '复制'), 1200);
+      } catch (e) { $('out').select(); document.execCommand('copy'); }
+    };
+    $('tab-json').onclick = () => { outMode = 'json'; updateOutput(); };
+    $('tab-ts').onclick = () => { outMode = 'ts'; updateOutput(); };
+    $('png').onclick = () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'field-plan.png';
+      a.click();
+    };
+    $('file').onchange = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const fr = new FileReader();
+      fr.onload = (ev) => {
+        try {
+          const json = JSON.parse(ev.target.result);
+          const arr = Array.isArray(json) ? json : json.items;
+          if (!Array.isArray(arr)) throw new Error('格式不正确');
+          snapshot();
+          state.items = arr
+            .map((it) => {
+              const base = {};
+              if (it.type === 'rect') {
+                base.type = 'rect'; base.x1 = +it.x1; base.y1 = +it.y1; base.x2 = +it.x2; base.y2 = +it.y2;
+              } else if (it.type === 'pad') {
+                base.type = 'pad'; base.x = +it.x; base.y = +it.y; base.size = +it.size;
+              } else if (it.type === 'path') {
+                base.type = 'path'; base.width = +(it.width || 0.6);
+                base.points = (it.points || []).map((p) => (Array.isArray(p) ? [+p[0], +p[1]] : [+p.x, +p.y]));
+              } else return null;
+              base.id = nextId++;
+              return base;
+            })
+            .filter(Boolean);
+          state.selectedId = null;
+          syncPanel();
+          render();
+        } catch (err) { alert('导入失败：' + err.message); }
+      };
+      fr.readAsText(f);
+      e.target.value = '';
+    };
+    $('importBtn').onclick = () => $('file').click();
+
+    // ============ 输入交互 ============
+    function pos(ev) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - rect.left) * (CSSW / rect.width), y: (ev.clientY - rect.top) * (CSSH / rect.height) };
+    }
+
+    let drag = null; // {kind:'rect'|'move', item, start, orig}
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const p = pos(e);
+      const raw = toGround(p.x, p.y);
+      const g = snapPt(raw);
+
+      if (state.mode === 'rect') {
+        snapshot();
+        state.draft = { type: 'rect', x1: g.x, y1: g.y, x2: g.x, y2: g.y };
+        drag = { kind: 'rect' };
+      } else if (state.mode === 'path') {
+        if (!state.draft) state.draft = { type: 'path', points: [[g.x, g.y]] };
+        else {
+          const last = state.draft.points[state.draft.points.length - 1];
+          if (!(Math.abs(last[0] - g.x) < 1e-6 && Math.abs(last[1] - g.y) < 1e-6)) state.draft.points.push([g.x, g.y]);
+        }
+      } else if (state.mode === 'pad') {
+        snapshot();
+        addItem({ type: 'pad', x: g.x, y: g.y, size: state.padSize });
+      } else {
+        const hit = hitTest(g);
+        state.selectedId = hit ? hit.id : null;
+        if (hit) {
+          snapshot();
+          drag = { kind: 'move', item: hit, origin: JSON.parse(JSON.stringify(hit)), start: raw };
+        }
+        syncPanel();
+      }
+      canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+      render();
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      const p = pos(e);
+      const raw = toGround(p.x, p.y);
+      const g = snapPt(raw);
+      state.cursor = [g.x, g.y];
+
+      if (drag && drag.kind === 'rect' && state.draft) {
+        state.draft.x2 = g.x; state.draft.y2 = g.y;
+        render();
+      } else if (drag && drag.kind === 'move') {
+        let dx = raw.x - drag.start.x, dy = raw.y - drag.start.y;
+        if (state.snap) { dx = Math.round(dx / state.step) * state.step; dy = Math.round(dy / state.step) * state.step; }
+        const it = state.items.find((i) => i.id === drag.item.id);
+        if (it) {
+          Object.assign(it, JSON.parse(JSON.stringify(drag.origin)));
+          translate(it, r3(dx), r3(dy));
+          updateOutput();
+          render();
+        }
+      }
+
+      // 坐标读数
+      const inside = raw.x >= 0 && raw.x <= FIELD && raw.y >= 0 && raw.y <= FIELD;
+      $('pos').innerHTML = inside
+        ? `东向 X：<b>${g.x.toFixed(2)}</b> m　北向 Y：<b>${g.y.toFixed(2)}</b> m`
+        : '移动鼠标查看坐标 · 单位 m';
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (drag && drag.kind === 'rect' && state.draft) {
+        const d = state.draft;
+        const w = Math.abs(d.x2 - d.x1), h = Math.abs(d.y2 - d.y1);
+        if (w > 0.05 && h > 0.05) addItem({ type: 'rect', x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2 });
+        else undoStack.pop();
+        state.draft = null;
+        syncPanel();
+        render();
+      }
+      drag = null;
+    });
+
+    canvas.addEventListener('dblclick', () => { if (state.mode === 'path') finishPath(); });
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (state.mode === 'path') finishPath();
+    });
+
+    function finishPath() {
+      const d = state.draft;
+      if (!d || d.type !== 'path') return;
+      // 去掉重复尾点
+      while (d.points.length > 1) {
+        const a = d.points[d.points.length - 1], b = d.points[d.points.length - 2];
+        if (Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6) d.points.pop();
+        else break;
+      }
+      if (d.points.length >= 2) {
+        snapshot();
+        addItem({ type: 'path', width: state.width, points: d.points.map((p) => [p[0], p[1]]) });
+      }
+      state.draft = null;
+      render();
+    }
+
+    function deleteSelected() {
+      if (!state.selectedId) return;
+      snapshot();
+      state.items = state.items.filter((i) => i.id !== state.selectedId);
+      state.selectedId = null;
+      syncPanel();
+      render();
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') {
+        if (e.key === 'Enter' && state.mode === 'path') finishPath();
+        return;
+      }
+      if (e.key === 'Enter' && state.mode === 'path') { finishPath(); return; }
+      if (e.key === 'Escape') { state.draft = null; state.selectedId = null; syncPanel(); render(); return; }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    });
+
+    // ============ 工具栏 ============
+    document.querySelectorAll('[data-mode]').forEach((btn) => {
+      btn.onclick = () => {
+        if (state.mode === 'path' && btn.dataset.mode !== 'path') finishPath();
+        state.mode = btn.dataset.mode;
+        state.draft = null;
+        document.querySelectorAll('[data-mode]').forEach((b) => {
+          b.classList.toggle('active', b === btn);
+          if (b !== btn) b.classList.add('gray'); else b.classList.remove('gray');
+        });
+        canvas.style.cursor = state.mode === 'select' ? 'default' : 'crosshair';
+        render();
+      };
+    });
+    $('width').onchange = (e) => { state.width = Math.max(0.1, parseFloat(e.target.value) || 0.6); render(); };
+    $('padSize').onchange = (e) => { state.padSize = Math.max(0.2, parseFloat(e.target.value) || 1.4); };
+    $('step').onchange = (e) => { state.step = parseFloat(e.target.value) || 0.5; render(); };
+    $('snap').onchange = (e) => { state.snap = e.target.checked; };
+    $('showGrid').onchange = (e) => { state.showGrid = e.target.checked; render(); };
+    $('undo').onclick = undo;
+    $('redo').onclick = redo;
+    $('finish').onclick = finishPath;
+    $('clear').onclick = () => {
+      if (!state.items.length) return;
+      snapshot();
+      state.items = [];
+      state.selectedId = null;
+      state.draft = null;
+      syncPanel();
+      render();
+    };
+
+    window.addEventListener('resize', fit);
+    fit();
+    syncPanel();
+  </script>
+</body>
+</html>

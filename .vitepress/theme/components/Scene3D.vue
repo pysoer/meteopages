@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue'
-import { useRouter } from 'vitepress'
+import { useRouter, withBase } from 'vitepress'
 
 const router = useRouter()
 const container = ref<HTMLDivElement | null>(null)
 const selected = ref<any>(null)
 const loading = ref(true)
 const errorMsg = ref('')
+const showGrid = ref(true) // 0.5m 虚线网格 + 场地框
 
-const BASE = import.meta.env.BASE_URL
-const FIELD_SIZE = 25 // 观测场边长（米），原点(0,0)在西南角，X东、Y北
+const toggleGrid = () => {
+  showGrid.value = !showGrid.value
+  if (gridOverlay) gridOverlay.visible = showGrid.value
+}
+
+const FIELD_SIZE = 25 // 观测场边长（米）：25m × 25m 正方形，原点(0,0)在西南角，X 东、Y 北
+const PATH_W = 0.6   // 步道宽度（米），规范小路
+const PAD = 1.4      // 设备便道平台边长（米）
+const NORTH_EXT = 7  // 北门外引路在场外延伸的长度（米）
 
 // 全部设备（与 equipment/*.md 一一对应）
 const FULL: any[] = [
@@ -34,42 +42,101 @@ const FULL: any[] = [
   { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。' }
 ]
 
-// 设备布局（gx 东向、gy 北向，原点西南角），按观测场布局图摆放
+// 设备布局（gx 东向、gy 北向，原点西南角，25m×35m 场地）
+// 北部（y>10）为图册第6页标准布局的设备及其标注坐标；图册中没有的设备统一先放南部，待后续手动调整
 const placeMap: any[] = [
-  { x: 4.5, y: 22.5, id: 'windprofiler', label: '人工观测风' },
-  { x: 12.5, y: 22.5, id: 'phenom', label: '电线积冰架' },
-  { x: 20.5, y: 22.5, id: 'wind', label: '风塔', height: 10 },
-  { x: 4.5, y: 19.5, id: 'th', label: '备份百叶箱' },
-  { x: 8.5, y: 19.5, id: 'radiometer', label: '温湿度自记' },
-  { x: 16.5, y: 19.5, id: 'cloudradar', label: '温湿度表' },
-  { x: 20.5, y: 19.5, id: 'visibility', label: '温湿传感器' },
-  { x: 4.5, y: 16.5, id: 'precip', label: '人工雨量筒' },
-  { x: 8.5, y: 16.5, id: 'rainfall', label: '雨量传感器' },
-  { x: 16.5, y: 16.5, id: 'pressure', label: '翻斗雨量计' },
-  { x: 20.5, y: 16.5, id: 'gnssmet', label: '闪电定位仪' },
-  { x: 4.5, y: 13.5, id: 'evap', label: '大型蒸发' },
-  { x: 8.5, y: 13.5, id: 'grass', label: '小型蒸发' },
-  { x: 12.5, y: 13.5, id: 'aerosollidar', label: '蒸发专用雨量筒' },
-  { x: 20.5, y: 13.5, id: 'weathermod', label: '酸雨采集桶' },
-  { x: 4.5, y: 10.5, id: 'ground', label: '地温场' },
-  { x: 8.5, y: 10.5, id: 'sunshine', label: '日照' },
-  { x: 12.5, y: 10.5, id: 'deep', label: '深层地温' },
-  { x: 16.5, y: 10.5, id: 'lidarwind', label: '自动观测' }
+  // —— 图册布局设备（北部） ——
+  { x: 3, y: 19.5, id: 'windprofiler', label: '电线积冰架' },
+  { x: 3.2, y: 18.2, id: 'phenom', label: '天气现象仪' },
+  { x: 5.5, y: 19, id: 'visibility', label: '能见度仪' },
+  { x: 19, y: 19.5, id: 'wind', label: '风塔', height: 10 },
+  { x: 6.5, y: 13.5, id: 'precip', label: '人工观测雨量筒' },
+  { x: 11.5, y: 13.5, id: 'cloudradar', label: '云观测设备' },
+  { x: 16.5, y: 13.8, id: 'th', label: '百叶箱' },
+  { x: 16.5, y: 10.5, id: 'rainfall', label: '雨量传感器' },
+  { x: 6.5, y: 6, id: 'evap', label: '大型蒸发皿' },
+  { x: 8.5, y: 5, id: 'grass', label: '草温' },
+  { x: 4, y: 8, id: 'ground', label: '地面浅层地温' },
+  { x: 8, y: 8, id: 'deep', label: '深层地温' },
+  { x: 17.5, y: 8, id: 'sunshine', label: '日照计' },
+  { x: 12.5, y: 10.5, id: 'gnssmet', label: 'GNSS/MET' },
+  // —— 图册中没有的设备（暂放南部，可拖动调整） ——
+  { x: 4, y: 4, id: 'radiometer', label: '微波辐射计' },
+  { x: 8, y: 4, id: 'aerosollidar', label: '气溶胶激光雷达' },
+  { x: 12, y: 4, id: 'lidarwind', label: '3D激光测风雷达' },
+  { x: 16, y: 4, id: 'pressure', label: '气压传感器' },
+  { x: 20, y: 4, id: 'weathermod', label: '人工影响天气装备' }
 ]
 
-// 道路（gx 东向、gy 北向）
-const ROADS: any[] = [
-  { x1: 11, x2: 14, y1: 0, y2: 25, name: '纵向主路' },
-  { x1: 2, x2: 23, y1: 20, y2: 23, name: '北部横向路' },
-  { x1: 0, x2: 25, y1: 12, y2: 15, name: '中部横向路' },
-  { x1: 3, x2: 22, y1: 4, y2: 7, name: '南部横向路' }
+// 步道布局：内置默认方案为「北门进入 + 一条纵向主路 + 四条横向步道」。
+// 若把绘制工具（/road-planner.html）导出的 roads.json 放进 public/，则以该文件为准。
+const MAIN_X = 12.5                                 // 纵向主路中心（东西向位置）
+const H_YS = [20, 15, 10, 5]                        // 横向步道中心线 y
+const H_X_SPAN: [number, number] = [2.5, 22.5]      // 横向步道东西范围
+
+type Item = any
+// 统一图元：cx/cy - 中心（场地坐标）、len - 长度、wid - 宽度、rot - 逆时针弧度（0 = 东西向）
+type Shape = { kind: 'road' | 'pad'; cx: number; cy: number; len: number; wid: number; rot: number }
+
+const DEFAULT_ITEMS: Item[] = [
+  { type: 'rect', x1: MAIN_X - 1.2, y1: FIELD_SIZE, x2: MAIN_X + 1.2, y2: FIELD_SIZE + NORTH_EXT }, // 北门外引路
+  { type: 'path', width: PATH_W, points: [[MAIN_X, 0], [MAIN_X, FIELD_SIZE]] } // 纵向主路贯穿南北
 ]
+for (const y of H_YS) {
+  DEFAULT_ITEMS.push({ type: 'rect', x1: H_X_SPAN[0], y1: y - PATH_W / 2, x2: H_X_SPAN[1], y2: y + PATH_W / 2 })
+}
+for (const p of placeMap) DEFAULT_ITEMS.push({ type: 'pad', x: p.x, y: p.y, size: PAD })
+
+// 读取 public/roads.json（绘制工具导出），缺失或失败时回落内置布局
+async function loadRoadItems(): Promise<Item[]> {
+  try {
+    const res = await fetch(withBase('roads.json'))
+    if (!res.ok) return DEFAULT_ITEMS
+    const json = await res.json()
+    const arr = Array.isArray(json) ? json : json?.items
+    if (Array.isArray(arr) && arr.length) return arr
+  } catch (e) { /* 未放置 roads.json 时使用内置布局 */ }
+  return DEFAULT_ITEMS
+}
+
+// 图元 → 矩形块（贴图与实体共用）
+function itemToShapes(it: Item): Shape[] {
+  if (it.type === 'rect') {
+    const x1 = Math.min(it.x1, it.x2), x2 = Math.max(it.x1, it.x2)
+    const y1 = Math.min(it.y1, it.y2), y2 = Math.max(it.y1, it.y2)
+    const dx = x2 - x1, dy = y2 - y1
+    return [{ kind: 'road', cx: (x1 + x2) / 2, cy: (y1 + y2) / 2, len: Math.max(dx, dy), wid: Math.min(dx, dy), rot: dy > dx ? Math.PI / 2 : 0 }]
+  }
+  if (it.type === 'pad') return [{ kind: 'pad', cx: it.x, cy: it.y, len: it.size, wid: it.size, rot: 0 }]
+  if (it.type === 'path' && Array.isArray(it.points) && it.points.length >= 2) {
+    const w = it.width || PATH_W
+    const pts: number[][] = it.points.map((p: any) => (Array.isArray(p) ? [p[0], p[1]] : [p.x, p.y]))
+    const out: Shape[] = []
+    for (let i = 0; i < pts.length - 1; i++) {
+      const dx = pts[i + 1][0] - pts[i][0], dy = pts[i + 1][1] - pts[i][1]
+      const len = Math.hypot(dx, dy)
+      if (len < 1e-4) continue
+      out.push({ kind: 'road', cx: (pts[i][0] + pts[i + 1][0]) / 2, cy: (pts[i][1] + pts[i + 1][1]) / 2, len: len + w / 2, wid: w, rot: Math.atan2(dy, dx) })
+    }
+    // 转角补方块，避免折线接缝露空
+    for (let i = 1; i < pts.length - 1; i++) out.push({ kind: 'road', cx: pts[i][0], cy: pts[i][1], len: w, wid: w, rot: 0 })
+    return out
+  }
+  return []
+}
+
+function itemsToShapes(items: Item[]): Shape[] {
+  const out: Shape[] = []
+  for (const it of items) for (const s of itemToShapes(it)) out.push(s)
+  return out
+}
 
 // 地面坐标 → 世界坐标（X 东不变，北向 Y 映射到 -Z）
 const toWorld = (gx: number, gy: number): [number, number] => [gx, -(gy - FIELD_SIZE / 2)]
 
 let renderer: any, scene: any, camera: any, controls: any, labelRenderer: any, tcontrols: any
 let raycaster: any, pointer: any, clock: any, animId = 0
+let gridOverlay: any = null
 const groups: any[] = []
 let hovered: any = null
 let dragging = false
@@ -78,7 +145,7 @@ const go = (link: string) => router.go(link)
 
 function makeHead(type: string, THREE: any, color: number) {
   const g = new THREE.Group()
-  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9, metalness: 0.4, roughness: 0.3 })
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.45 })
   if (type === 'th') {
     g.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), mat))
   } else if (type === 'wind') {
@@ -138,71 +205,201 @@ function makeHead(type: string, THREE: any, color: number) {
   return g
 }
 
-function makeGroundTexture(THREE: any) {
-  const size = 1024
+function makeGroundTexture(THREE: any, shapes: Shape[]) {
+  // 纹理与 3D 世界严格 1:1 对齐：去掉边距，像素 = 地理坐标 × m
+  const m = 40                                   // 像素 / 米
+  const W = FIELD_SIZE * m                       // 场地宽（东向，gx 0..25）
+  const H = (FIELD_SIZE + NORTH_EXT) * m         // 含北门外引路（gy 0..25+7）
   const canvas = document.createElement('canvas')
-  canvas.width = size; canvas.height = size
-  const m = (size - 64) / FIELD_SIZE
-  const pad = 32
-  // 地面坐标 (gx, gy) → canvas 像素
-  const cx = (gx: number) => pad + gx * m
-  const cy = (gy: number) => size - pad - gy * m
+  canvas.width = W
+  canvas.height = H
+  // 地面坐标 (gx, gy) → canvas 像素：顶部为北（gy=25+7 北门外引路段），底部为南（gy=0）
+  const cx = (gx: number) => gx * m
+  const cy = (gy: number) => (FIELD_SIZE + NORTH_EXT - gy) * m
 
   const c = canvas.getContext('2d')!
 
-  // 草地底色
-  c.fillStyle = '#10b981'
-  c.fillRect(0, 0, size, size)
+  // 场外土地底色（铺满，含北门外引路区域）
+  c.fillStyle = '#8fae7c'
+  c.fillRect(0, 0, W, H)
+  // 草地底色（场地 gy 0..25）
+  c.fillStyle = '#5cb85c'
+  c.fillRect(0, NORTH_EXT * m, FIELD_SIZE * m, FIELD_SIZE * m)
 
-  // 道路（水泥地砖色）
-  for (const r of ROADS) {
-    c.fillStyle = '#cbd5e1'
-    c.fillRect(cx(r.x1), cy(r.y2), (r.x2 - r.x1) * m, (r.y2 - r.y1) * m)
-    c.strokeStyle = '#94a3b8'
-    c.lineWidth = 2
-    c.strokeRect(cx(r.x1), cy(r.y2), (r.x2 - r.x1) * m, (r.y2 - r.y1) * m)
+  // 草地噪点纹理
+  for (let i = 0; i < 12000; i++) {
+    const gx = Math.random() * FIELD_SIZE, gy = Math.random() * FIELD_SIZE
+    c.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(0,60,0,0.05)'
+    c.fillRect(cx(gx), cy(gy), 2, 2)
   }
 
-  // 设备点位标记（彩色圆点 + 简称）
+  // 步道 / 便道平台（支持任意角度：先统一填充，再给平台描边）
+  for (const s of shapes) {
+    c.save()
+    c.translate(cx(s.cx), cy(s.cy))
+    c.rotate(-s.rot)            // 地面逆时针 → canvas 顺时针
+    const w = s.len * m, h = s.wid * m
+    c.fillStyle = s.kind === 'pad' ? '#cdd4d6' : '#d8dede'
+    c.fillRect(-w / 2, -h / 2, w, h)
+    if (s.kind === 'pad') {
+      c.strokeStyle = '#aeb9bc'
+      c.lineWidth = 1.5
+      c.strokeRect(-w / 2, -h / 2, w, h)
+    }
+    c.restore()
+  }
+
+  // 设备点位标记（柔和圆点 + 简称）
   c.textAlign = 'center'; c.textBaseline = 'middle'
-  c.font = 'bold 12px sans-serif'
+  c.font = 'bold 11px sans-serif'
   for (const p of placeMap) {
     const meta = FULL.find((e) => e.id === p.id)!
     const color = '#' + meta.color.toString(16).padStart(6, '0')
     c.fillStyle = color
-    c.beginPath(); c.arc(cx(p.x), cy(p.y), 0.45 * m, 0, Math.PI * 2); c.fill()
-    c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.stroke()
-    c.fillStyle = '#1f2937'
-    c.fillText(p.label, cx(p.x), cy(p.y) + 0.9 * m)
+    c.beginPath(); c.arc(cx(p.x), cy(p.y) + 0.55 * m, 0.28 * m, 0, Math.PI * 2); c.fill()
+    c.fillStyle = 'rgba(255,255,255,0.92)'
+    c.fillText(p.label, cx(p.x), cy(p.y) + 1.15 * m)
   }
 
-  // 中心标志
-  c.strokeStyle = '#f59e0b'; c.lineWidth = 4
-  c.beginPath(); c.arc(cx(12.5), cy(16.5), 0.3 * m, 0, Math.PI * 2); c.stroke()
-  c.fillStyle = '#f59e0b'; c.font = 'bold 14px sans-serif'
-  c.fillText('中心标志', cx(12.5), cy(16.5))
+  // 场地中心标志（25m × 25m 的几何中心 12.5m, 12.5m）
+  c.strokeStyle = '#f59e0b'; c.lineWidth = 3
+  c.beginPath(); c.arc(cx(12.5), cy(12.5), 0.3 * m, 0, Math.PI * 2); c.stroke()
+  c.fillStyle = '#f59e0b'; c.font = 'bold 13px sans-serif'
+  c.fillText('中心标志', cx(12.5), cy(12.5) - 0.5 * m)
 
   // 场地边框
-  c.strokeStyle = '#475569'; c.lineWidth = 5
-  c.strokeRect(pad, pad, size - 2 * pad, size - 2 * pad)
+  c.strokeStyle = '#7d8b7a'; c.lineWidth = 4
+  c.strokeRect(0, NORTH_EXT * m, FIELD_SIZE * m, FIELD_SIZE * m)
 
-  // 方位标识（北在上）
-  c.fillStyle = '#1f2937'; c.font = 'bold 28px sans-serif'
-  c.fillText('N', size / 2, pad + 22)
-  c.fillText('S', size / 2, size - pad - 22)
-  c.fillText('W', pad + 22, size / 2)
-  c.fillText('E', size - pad - 22, size / 2)
+  // 方位标识（北在上，画在北门外引路区域内）
+  c.fillStyle = 'rgba(255,255,255,0.9)'; c.font = 'bold 26px sans-serif'
+  c.fillText('N', W / 2, 18)
 
-  // 比例尺
-  c.fillStyle = '#1f2937'; c.font = 'bold 18px sans-serif'; c.textAlign = 'left'
-  c.fillText('0', pad + 6, size - pad - 12)
-  c.fillText('25m', pad + m * 25 - 56, size - pad - 12)
-  c.strokeStyle = '#1f2937'; c.lineWidth = 3
-  c.beginPath()
-  c.moveTo(pad + 6, size - pad - 28)
-  c.lineTo(pad + m * 25 - 6, size - pad - 28)
-  c.stroke()
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 8
+  return tex
+}
 
+function buildPicketFence(THREE: any, scene: any) {
+  // 白色尖桩围栏：立柱 + 两根横杆 + 尖桩（参考图册效果）
+  const white = new THREE.MeshStandardMaterial({ color: 0xf5f7f8, roughness: 0.55, metalness: 0.08 })
+  const F_H = 1.1, PICKET_W = 0.09, PICKET_T = 0.03, GAP = 0.09, POST_STEP = 2.5
+  const gateW = 2.6 // 北侧大门开口（主步道处）
+
+  const addPickets = (x1: number, y1: number, x2: number, y2: number, skipMid?: [number, number]) => {
+    const dx = x2 - x1, dy = y2 - y1
+    const len = Math.hypot(dx, dy)
+    const n = Math.max(1, Math.round(len / (PICKET_W + GAP)))
+    const angle = Math.atan2(-dy, dx) // 世界坐标旋转（北向 y → -z）
+    for (let i = 0; i <= n; i++) {
+      const t = i / n
+      const px = x1 + dx * t, pz = y1 + dy * t
+      if (skipMid && px > skipMid[0] && px < skipMid[1]) continue
+      const picket = new THREE.Mesh(new THREE.BoxGeometry(PICKET_W, F_H, PICKET_T), white)
+      picket.position.set(px, F_H / 2, pz)
+      picket.rotation.y = -angle
+      scene.add(picket)
+    }
+    // 横杆（上下两根，分段以避开大门开口）
+    const rail = (yOff: number) => {
+      const segs: [number, number][] = skipMid
+        ? [[x1, skipMid[0]], [skipMid[1], x2]]
+        : [[x1, x2]]
+      for (const [a, b] of segs) {
+        const mid = (a + b) / 2
+        const rl = Math.max(0.01, b - a)
+        const r = new THREE.Mesh(new THREE.BoxGeometry(rl, 0.07, 0.05), white)
+        r.position.set(mid, yOff, y1)
+        r.rotation.y = -angle
+        scene.add(r)
+      }
+    }
+    rail(F_H * 0.72); rail(F_H * 0.32)
+    // 加强立柱
+    const posts = Math.max(1, Math.round(len / POST_STEP))
+    for (let i = 0; i <= posts; i++) {
+      const t = i / posts
+      const px = x1 + dx * t, pz = y1 + dy * t
+      if (skipMid && px > skipMid[0] - 0.1 && px < skipMid[1] + 0.1) continue
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, F_H + 0.18, 0.14), white)
+      post.position.set(px, (F_H + 0.18) / 2, pz)
+      post.rotation.y = -angle
+      scene.add(post)
+    }
+  }
+
+  const [wx0] = toWorld(0, 0)
+  const [, wzN] = toWorld(0, FIELD_SIZE)
+  const [wx25] = toWorld(FIELD_SIZE, 0)
+  // 北（大门开口在主步道两侧）/ 南 / 西 / 东
+  const [gx1, gx2] = [MAIN_X - gateW / 2, MAIN_X + gateW / 2]
+  addPickets(wx0, wzN, wx25, wzN, [gx1, gx2])
+  addPickets(wx0, -wzN, wx25, -wzN)
+  addPickets(wx0, wzN, wx0, -wzN)
+  addPickets(wx25, wzN, wx25, -wzN)
+  // 大门（两扇对开栅栏门，微开）
+  for (const s of [-1, 1]) {
+    const gate = new THREE.Group()
+    for (let i = 0; i < 7; i++) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(PICKET_W, F_H, PICKET_T), white)
+      p.position.set(i * (PICKET_W + GAP), F_H / 2, 0); gate.add(p)
+    }
+    for (const yo of [F_H * 0.72, F_H * 0.32]) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.07, 0.05), white)
+      r.position.set(0.55, yo, 0); gate.add(r)
+    }
+    const hingeX = s > 0 ? gx2 : gx1
+    gate.position.set(hingeX, 0, wzN)
+    gate.rotation.y = s * -0.5
+    scene.add(gate)
+  }
+}
+
+// 25m × 25m 场地框 + 0.5m 间隔虚线网格（贴地 3cm，便于对照图纸定位道路）
+function buildGridOverlay(THREE: any, step = 0.5) {
+  const g = new THREE.Group()
+  const y = 0.035
+  const pts: number[] = []
+  const n = Math.round(FIELD_SIZE / step)
+  for (let i = 0; i <= n; i++) {
+    const v = i * step
+    if (v > FIELD_SIZE + 1e-6) break
+    const [ax, azN] = toWorld(v, 0), [, azEnd] = toWorld(v, FIELD_SIZE)
+    pts.push(ax, y, azN, ax, y, azEnd)
+    const [bxW, bz] = toWorld(0, v), [bxE] = toWorld(FIELD_SIZE, v)
+    pts.push(bxW, y, bz, bxE, y, bz)
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
+  const lines = new THREE.LineSegments(
+    geo,
+    new THREE.LineDashedMaterial({ color: 0x9fd8ff, dashSize: 0.25, gapSize: 0.2, transparent: true, opacity: 0.5 })
+  )
+  lines.computeLineDistances()
+  g.add(lines)
+
+  // 场地外框
+  const [c0x, c0z] = toWorld(0, 0), [c1x, c1z] = toWorld(FIELD_SIZE, FIELD_SIZE)
+  const borderGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(c0x, y, c0z), new THREE.Vector3(c1x, y, c0z),
+    new THREE.Vector3(c1x, y, c1z), new THREE.Vector3(c0x, y, c1z)
+  ])
+  g.add(new THREE.LineLoop(borderGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 })))
+  return g
+}
+
+function makeSkyTexture(THREE: any) {
+  // 淡蓝 → 白 渐变天空
+  const canvas = document.createElement('canvas')
+  canvas.width = 16; canvas.height = 256
+  const c = canvas.getContext('2d')!
+  const grad = c.createLinearGradient(0, 0, 0, 256)
+  grad.addColorStop(0, '#7ec3f0')
+  grad.addColorStop(0.6, '#cfe8f8')
+  grad.addColorStop(1, '#f2f8fc')
+  c.fillStyle = grad
+  c.fillRect(0, 0, 16, 256)
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
@@ -218,10 +415,10 @@ async function init() {
   const w = el.clientWidth, h = el.clientHeight
 
   scene = new THREE.Scene()
-  scene.fog = new THREE.FogExp2(0xbfdaf2, 0.004)
+  scene.fog = new THREE.Fog(0xe4f1fa, 80, 220)
 
-  camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 400)
-  camera.position.set(12.5, 34, 26)
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 500)
+  camera.position.set(34, 22, 34)
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
   renderer.setSize(w, h)
@@ -239,12 +436,12 @@ async function init() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
-  controls.minDistance = 12
-  controls.maxDistance = 140
-  controls.maxPolarAngle = Math.PI / 2.05
-  controls.target.set(12.5, 1, -8)
+  controls.minDistance = 10
+  controls.maxDistance = 120
+  controls.maxPolarAngle = Math.PI / 2.15
+  controls.target.set(FIELD_SIZE / 2, 0.5, -FIELD_SIZE / 2 + 3)
   controls.autoRotate = true
-  controls.autoRotateSpeed = 0.3
+  controls.autoRotateSpeed = 0.25
 
   // 拖动控制（仅地面 X/Z 平移）
   tcontrols = new TransformControls(camera, renderer.domElement)
@@ -258,47 +455,57 @@ async function init() {
   const tHelper = (tcontrols as any).getHelper ? (tcontrols as any).getHelper() : tcontrols
   scene.add(tHelper)
 
-  // 光照
-  scene.add(new THREE.AmbientLight(0xffffff, 0.65))
-  scene.add(new THREE.HemisphereLight(0x87ceeb, 0x10b981, 0.45))
-  const dir = new THREE.DirectionalLight(0xffffff, 1.2)
-  dir.position.set(20, 40, 10)
+  // 光照（清新日光感）
+  scene.add(new THREE.HemisphereLight(0xcfe8f8, 0x6a9a5c, 0.9))
+  const dir = new THREE.DirectionalLight(0xfff5e0, 1.6)
+  dir.position.set(30, 45, 20)
   scene.add(dir)
 
-  scene.background = new THREE.Color(0xbfdaf2)
+  scene.background = makeSkyTexture(THREE)
 
-  // 地面（草地）
-  const groundTex = makeGroundTexture(THREE)
+  // 场外草地（大范围）
+  const outer = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300),
+    new THREE.MeshStandardMaterial({ color: 0x8fae7c, roughness: 1, metalness: 0 })
+  )
+  outer.rotation.x = -Math.PI / 2
+  outer.position.y = -0.02
+  scene.add(outer)
+
+  // 道路布局：优先加载 public/roads.json（绘制工具导出），否则用内置布局
+  const items = await loadRoadItems()
+  const shapes = itemsToShapes(items)
+
+  // 观测场草地（含南门外引路的贴地纹理）
+  const groundTex = makeGroundTexture(THREE, shapes)
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(FIELD_SIZE, FIELD_SIZE),
-    new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.9, metalness: 0.05 })
+    new THREE.PlaneGeometry(FIELD_SIZE, FIELD_SIZE + NORTH_EXT),
+    new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95, metalness: 0 })
   )
   ground.rotation.x = -Math.PI / 2
+  // 场地 X∈[0,25]、Z∈[-12.5,12.5]，北门外引路向 -Z 延伸 NORTH_EXT m → 平面中心 z = -NORTH_EXT/2
+  ground.position.set(FIELD_SIZE / 2, 0, -NORTH_EXT / 2)
   scene.add(ground)
 
-  // 道路实体（水泥）
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.85, metalness: 0.05 })
-  for (const r of ROADS) {
-    const [wx, wz] = toWorld((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2)
-    const road = new THREE.Mesh(
-      new THREE.BoxGeometry(r.x2 - r.x1, 0.04, r.y2 - r.y1),
-      roadMat
-    )
-    road.position.set(wx, 0.02, wz)
-    scene.add(road)
+  // 步道 / 便道实体（浅灰，微高于草地）
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0xd8dede, roughness: 0.9, metalness: 0.02 })
+  const padMat = new THREE.MeshStandardMaterial({ color: 0xcdd4d6, roughness: 0.9, metalness: 0.02 })
+  for (const s of shapes) {
+    const isPad = s.kind === 'pad'
+    const [wx, wz] = toWorld(s.cx, s.cy)
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(s.len, isPad ? 0.06 : 0.05, s.wid), isPad ? padMat : roadMat)
+    mesh.position.set(wx, isPad ? 0.03 : 0.025, wz)
+    mesh.rotation.y = s.rot
+    scene.add(mesh)
   }
 
-  // 围栏（深灰色），原点西南角，边界 X∈[0,25] Y∈[0,25]
-  const fenceMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.35, roughness: 0.5 })
-  const H = 1.2, T = 0.2, ext = 0.3
-  const north = new THREE.Mesh(new THREE.BoxGeometry(FIELD_SIZE + ext, H, T), fenceMat)
-  north.position.set(FIELD_SIZE / 2, H / 2, -FIELD_SIZE / 2); scene.add(north) // Y=25
-  const south = new THREE.Mesh(new THREE.BoxGeometry(FIELD_SIZE + ext, H, T), fenceMat)
-  south.position.set(FIELD_SIZE / 2, H / 2, FIELD_SIZE / 2); scene.add(south) // Y=0
-  const west = new THREE.Mesh(new THREE.BoxGeometry(T, H, FIELD_SIZE + ext), fenceMat)
-  west.position.set(0, H / 2, 0); scene.add(west) // X=0
-  const east = new THREE.Mesh(new THREE.BoxGeometry(T, H, FIELD_SIZE + ext), fenceMat)
-  east.position.set(FIELD_SIZE, H / 2, 0); scene.add(east) // X=25
+  // 25m × 25m 场地框 + 0.5m 虚线网格（可切换）
+  gridOverlay = buildGridOverlay(THREE)
+  gridOverlay.visible = showGrid.value
+  scene.add(gridOverlay)
+
+  // 白色尖桩围栏 + 大门
+  buildPicketFence(THREE, scene)
 
   // 设备
   const list = FULL.map((e) => {
@@ -315,25 +522,25 @@ async function init() {
     let poleH = e.type === 'deep' ? 1.4 : e.type === 'evap' ? 1.2 : 5
     if (e.customHeight) poleH = e.customHeight
     const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.12, 0.16, poleH, 12),
-      new THREE.MeshStandardMaterial({ color: 0x4a5a78, metalness: 0.6, roughness: 0.4 })
+      new THREE.CylinderGeometry(0.1, 0.13, poleH, 12),
+      new THREE.MeshStandardMaterial({ color: 0xe8ecee, metalness: 0.25, roughness: 0.5 })
     )
     pole.position.y = poleH / 2
     grp.add(pole)
 
     const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.6, 0.7, 0.2, 20),
-      new THREE.MeshStandardMaterial({ color: 0x223052, metalness: 0.5, roughness: 0.5 })
+      new THREE.CylinderGeometry(0.55, 0.65, 0.22, 20),
+      new THREE.MeshStandardMaterial({ color: 0xb9c2c6, metalness: 0.15, roughness: 0.7 })
     )
-    base.position.y = 0.1
+    base.position.y = 0.11
     grp.add(base)
 
     const halo = new THREE.Mesh(
-      new THREE.RingGeometry(0.7, 1.0, 32),
-      new THREE.MeshBasicMaterial({ color: e.color, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
+      new THREE.RingGeometry(0.62, 0.78, 32),
+      new THREE.MeshBasicMaterial({ color: e.color, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
     )
     halo.rotation.x = -Math.PI / 2
-    halo.position.y = 0.03
+    halo.position.y = 0.07
     grp.add(halo)
 
     const head = makeHead(e.type, THREE, e.color)
@@ -341,16 +548,20 @@ async function init() {
     grp.add(head)
     grp.userData.head = head
     grp.userData.headBaseY = head.position.y
-    grp.userData.baseEmissive = 0.9
+    grp.userData.baseEmissive = 0.35
 
     const div = document.createElement('div')
     div.className = 'sci-label'
     div.style.pointerEvents = 'auto'
+    div.style.opacity = '0'
+    div.style.transform = 'scale(0.9)'
+    div.style.transition = 'opacity 0.2s, transform 0.2s'
     div.innerHTML = `<span class="dot"></span>${e.name}`
     div.onclick = () => selectGroup(grp)
     const label = new CSS2DObject(div)
-    label.position.set(0, poleH + 2.4, 0)
+    label.position.set(0, poleH + 2.2, 0)
     grp.add(label)
+    grp.userData.labelEl = div
 
     scene.add(grp)
     groups.push(grp)
@@ -384,9 +595,21 @@ function onMove(ev: PointerEvent) {
   const hit = raycaster.intersectObjects(groups, true)[0]
   const grp = hit ? findGroup(hit.object) : null
   if (grp !== hovered) {
-    if (hovered) hovered.userData.head.scale.setScalar(1)
+    if (hovered) {
+      hovered.userData.head.scale.setScalar(1)
+      if (hovered.userData.labelEl && hovered.userData.id !== selected.value?.id) {
+        hovered.userData.labelEl.style.opacity = '0'
+        hovered.userData.labelEl.style.transform = 'scale(0.9)'
+      }
+    }
     hovered = grp
-    if (hovered) hovered.userData.head.scale.setScalar(1.25)
+    if (hovered) {
+      hovered.userData.head.scale.setScalar(1.25)
+      if (hovered.userData.labelEl) {
+        hovered.userData.labelEl.style.opacity = '1'
+        hovered.userData.labelEl.style.transform = 'scale(1)'
+      }
+    }
     renderer.domElement.style.cursor = hovered ? 'pointer' : 'grab'
   }
 }
@@ -403,7 +626,11 @@ function selectGroup(grp: any) {
   selected.value = { ...grp.userData }
   controls.autoRotate = false
   grp.userData.head.scale.setScalar(1.4)
-  grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = 2.2 })
+  grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = 1.6 })
+  if (grp.userData.labelEl) {
+    grp.userData.labelEl.style.opacity = '1'
+    grp.userData.labelEl.style.transform = 'scale(1)'
+  }
   tcontrols.attach(grp)
 }
 
@@ -413,6 +640,10 @@ function clearSelected() {
     if (grp) {
       grp.userData.head.scale.setScalar(1)
       grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = grp.userData.baseEmissive })
+      if (grp.userData.labelEl) {
+        grp.userData.labelEl.style.opacity = '0'
+        grp.userData.labelEl.style.transform = 'scale(0.9)'
+      }
     }
   }
   selected.value = null
@@ -424,7 +655,7 @@ function animate() {
   animId = requestAnimationFrame(animate)
   const t = clock.getElapsedTime()
   groups.forEach((g, i) => {
-    if (g.userData.head) g.userData.head.position.y = g.userData.headBaseY + Math.sin(t * 1.2 + i) * 0.12
+    if (g.userData.head) g.userData.head.position.y = g.userData.headBaseY + Math.sin(t * 1.2 + i) * 0.1
   })
   controls.update()
   renderer.render(scene, camera)
@@ -459,7 +690,12 @@ onBeforeUnmount(() => {
     <div class="top-bar">
       <span class="sci-kicker">3D INTERACTIVE GUIDE</span>
       <h1>虚拟观测场导览</h1>
-      <p>25m × 25m · 原点西南角 · 草地 + 水泥道路 + 围栏 · 点击设备可拖动</p>
+      <p>25m × 25m · 白色围栏 + 北门 · 0.5m 虚线网格 · 道路可由 /road-planner.html 导出</p>
+      <div class="grid-toggle">
+        <button class="sci-btn small" @click="toggleGrid">
+          {{ showGrid ? '隐藏网格' : '显示网格' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="status">正在加载三维场景…</div>
@@ -477,7 +713,7 @@ onBeforeUnmount(() => {
       </div>
     </transition>
 
-    <div class="hint">提示：灰色为水泥道路（纵向主路 / 北·中·南横向路），绿色为草坪，深色为围栏；设备可拖动</div>
+    <div class="hint">提示：白色为尖桩围栏（北侧为大门），浅灰为步道与设备便道，虚线网格间距 0.5m；道路布局可用 public/roads.json 覆盖</div>
   </div>
 </template>
 
@@ -489,6 +725,8 @@ onBeforeUnmount(() => {
 .top-bar { position: absolute; top: 16px; left: 0; right: 0; text-align: center; z-index: 5; pointer-events: none; padding: 0 12px; }
 .top-bar h1 { font-size: 24px; margin: 6px 0 4px; }
 .top-bar p { color: var(--vp-c-text-2); font-size: 13px; margin: 0; }
+.grid-toggle { display: flex; justify-content: center; margin-top: 8px; }
+.grid-toggle button { pointer-events: auto; padding: 4px 14px; font-size: 12px; }
 
 .status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 7; color: var(--vp-c-text-2); font-size: 14px; }
 .status.err { color: #f87171; }
@@ -508,12 +746,12 @@ onBeforeUnmount(() => {
 <style>
 .sci-label {
   display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(8,14,28,0.82); border: 1px solid rgba(34,211,238,0.5);
-  color: #d8f4ff; font-size: 11px; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255,255,255,0.85); border: 1px solid rgba(80,130,160,0.35);
+  color: #1f3a4d; font-size: 11px; padding: 3px 9px; border-radius: 999px;
   white-space: nowrap; cursor: pointer; backdrop-filter: blur(6px);
-  box-shadow: 0 0 14px rgba(34,211,238,0.25); user-select: none;
+  box-shadow: 0 1px 6px rgba(20,60,90,0.18); user-select: none;
   transition: transform 0.2s, border-color 0.2s;
 }
 .sci-label:hover { transform: scale(1.06); border-color: #22d3ee; }
-.sci-label .dot { width: 7px; height: 7px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px #22d3ee; }
+.sci-label .dot { width: 7px; height: 7px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 6px rgba(34,211,238,0.8); }
 </style>

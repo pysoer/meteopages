@@ -5,3 +5,4 @@ node_modules
 .vitepress/out2
 *.log
 .DS_Store
+.codebuddy
