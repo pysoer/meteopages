@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue'
-import { useRouter, withBase } from 'vitepress'
+import { withBase } from 'vitepress'
+import { createStevensonScreen } from './models/StevensonScreen'
+import { createWindTower } from './models/WindTower'
+import { createRainGauge } from './models/RainGauge'
+import { createCloudRadar } from './models/CloudRadar'
+import { createVisibilitySensor } from './models/VisibilitySensor'
 
-const router = useRouter()
 const container = ref<HTMLDivElement | null>(null)
 const selected = ref<any>(null)
 const loading = ref(true)
 const errorMsg = ref('')
-const showGrid = ref(true) // 0.5m 虚线网格 + 场地框
-
-const toggleGrid = () => {
-  showGrid.value = !showGrid.value
-  if (gridOverlay) gridOverlay.visible = showGrid.value
-}
+const showGrid = ref(false) // 默认不显示网格
 
 const FIELD_SIZE = 25 // 观测场边长（米）：25m × 25m 正方形，原点(0,0)在西南角，X 东、Y 北
 const PATH_W = 0.6   // 步道宽度（米），规范小路
@@ -21,25 +20,28 @@ const NORTH_EXT = 7  // 北门外引路在场外延伸的长度（米）
 
 // 全部设备（与 equipment/*.md 一一对应）
 const FULL: any[] = [
-  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。' },
-  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。' },
-  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, desc: '翻斗计数 / 称重计量降水量，反演降水强度。' },
-  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, desc: '散射法测量气象光学视程（MOR）。' },
-  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。' },
-  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。' },
-  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, desc: '测地面温度及 5/10/15/20cm 浅层地温。' },
-  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, desc: '记录太阳实际照射时数。' },
-  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, desc: '距地 6cm 测草面温度，用于霜冻预警。' },
-  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, desc: '测 40/80/160/320cm 深层地温，反映土壤热状况。' },
-  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, desc: 'E-601 蒸发皿，观测水面蒸发量。' },
-  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, desc: '测量本站气压，用于天气形势分析。' },
-  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。' },
-  { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, desc: '被动微波遥感，连续获取温湿廓线与云水含量。' },
-  { id: 'aerosollidar', name: '气溶胶激光雷达', type: 'aerosollidar', color: 0xf87171, desc: '激光遥感气溶胶浓度与垂直分布、混合层高度。' },
-  { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, desc: '湍流散射连续获取水平/垂直风场廓线。' },
-  { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, desc: '导航卫星信号反演大气可降水量等参数。' },
-  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, desc: '多普勒激光获取三维风矢量与风廓线。' },
-  { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。' }
+  { id: 'th', name: '百叶箱（温湿度）', type: 'th', color: 0x22d3ee, desc: '白色玻璃钢百叶箱，安装温、湿度传感器，防止辐射并保证通风。', link: '/equipment/th' },
+  { id: 'wind', name: '风塔', type: 'wind', color: 0x3b82f6, desc: '10–12m 高风塔，安装风向标与风杯，测风向与风速。', link: '/equipment/wind' },
+  { id: 'rainfall', name: '翻斗式雨量传感器', type: 'rain', color: 0x38bdf8, desc: '翻斗计数 / 称重计量降水量，反演降水强度。', link: '/equipment/rainfall' },
+  { id: 'rainfall2', name: '翻斗式雨量传感器②', type: 'rain', color: 0x38bdf8, desc: '翻斗式雨量传感器（三角阵列）', link: '/equipment/rainfall' },
+  { id: 'rainfall3', name: '翻斗式雨量传感器③', type: 'rain', color: 0x38bdf8, desc: '翻斗式雨量传感器（三角阵列）', link: '/equipment/rainfall' },
+  { id: 'rainfall_backup', name: '备份雨量桶', type: 'rain', color: 0x7dd3fc, desc: '备份用标准雨量筒，不锈钢材质。', link: '/equipment/rainfall' },
+  { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, desc: '散射法测量气象光学视程（MOR）。', link: '/equipment/visibility' },
+  { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。', link: '/equipment/precip' },
+  { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。', link: '/equipment/phenom' },
+  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, desc: '测地面温度及 5/10/15/20cm 浅层地温。', link: '/equipment/ground' },
+  { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, desc: '记录太阳实际照射时数。', link: '/equipment/sunshine' },
+  { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, desc: '距地 6cm 测草面温度，用于霜冻预警。', link: '/equipment/grass' },
+  { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, desc: '测 40/80/160/320cm 深层地温，反映土壤热状况。', link: '/equipment/deep' },
+  { id: 'evap', name: '蒸发观测设备', type: 'evap', color: 0x8b5cf6, desc: 'E-601 蒸发皿，观测水面蒸发量。', link: '/equipment/evap' },
+  { id: 'pressure', name: '气压传感器', type: 'pressure', color: 0xf472b6, desc: '测量本站气压，用于天气形势分析。', link: '/equipment/pressure' },
+  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。', link: '/equipment/cloudradar' },
+  { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, desc: '被动微波遥感，连续获取温湿廓线与云水含量。', link: '/equipment/radiometer' },
+  { id: 'aerosollidar', name: '气溶胶激光雷达', type: 'aerosollidar', color: 0xf87171, desc: '激光遥感气溶胶浓度与垂直分布、混合层高度。', link: '/equipment/aerosollidar' },
+  { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, desc: '湍流散射连续获取水平/垂直风场廓线。', link: '/equipment/windprofiler' },
+  { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, desc: '导航卫星信号反演大气可降水量等参数。', link: '/equipment/gnssmet' },
+  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, desc: '多普勒激光获取三维风矢量与风廓线。', link: '/equipment/lidarwind' },
+  { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。', link: '/equipment/weathermod' }
 ]
 
 // 设备布局（gx 东向、gy 北向，原点西南角，25m×35m 场地）
@@ -48,12 +50,17 @@ const placeMap: any[] = [
   // —— 图册布局设备（北部） ——
   { x: 3, y: 19.5, id: 'windprofiler', label: '电线积冰架' },
   { x: 3.2, y: 18.2, id: 'phenom', label: '天气现象仪' },
-  { x: 5.5, y: 19, id: 'visibility', label: '能见度仪' },
+  { x: 14.2, y: 23.5, id: 'visibility', label: '能见度仪' },
   { x: 19, y: 19.5, id: 'wind', label: '风塔', height: 10 },
   { x: 6.5, y: 13.5, id: 'precip', label: '人工观测雨量筒' },
   { x: 11.5, y: 13.5, id: 'cloudradar', label: '云观测设备' },
   { x: 16.5, y: 13.8, id: 'th', label: '百叶箱' },
   { x: 16.5, y: 10.5, id: 'rainfall', label: '雨量传感器' },
+  // 雨量筒三角阵列（3 个间隔 1m 等边三角形）
+  { x: 15.63, y: 10.5, id: 'rainfall2', label: '雨量传感器②' },
+  { x: 17.04, y: 11.37, id: 'rainfall3', label: '雨量传感器③' },
+  // 备份雨量桶
+  { x: 14.2, y: 10.8, id: 'rainfall_backup', label: '备份雨量桶' },
   { x: 6.5, y: 6, id: 'evap', label: '大型蒸发皿' },
   { x: 8.5, y: 5, id: 'grass', label: '草温' },
   { x: 4, y: 8, id: 'ground', label: '地面浅层地温' },
@@ -99,6 +106,17 @@ async function loadRoadItems(): Promise<Item[]> {
   return DEFAULT_ITEMS
 }
 
+// 读取 public/devices.json（拖动后导出的设备布局），缺失或失败时回落内置 placeMap
+async function loadDeviceMap(): Promise<any[]> {
+  try {
+    const res = await fetch(withBase('devices.json'))
+    if (!res.ok) return placeMap
+    const json = await res.json()
+    if (Array.isArray(json) && json.length) return json
+  } catch (e) { /* 未放置 devices.json 时使用内置布局 */ }
+  return placeMap
+}
+
 // 图元 → 矩形块（贴图与实体共用）
 function itemToShapes(it: Item): Shape[] {
   if (it.type === 'rect') {
@@ -141,30 +159,32 @@ const groups: any[] = []
 let hovered: any = null
 let dragging = false
 
-const go = (link: string) => router.go(link)
+// 整页跳转：避免 SPA 内容过渡(Transition) 与 Three.js 画布卸载冲突
+// 该冲突会导致 Vue 在 patch 旧页面时报 "Cannot read properties of null (reading 'subTree')"
+const go = (link: string) => {
+  if (!link) return
+  window.location.href = withBase(link)
+}
 
 function makeHead(type: string, THREE: any, color: number) {
   const g = new THREE.Group()
   const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, metalness: 0.3, roughness: 0.45 })
   if (type === 'th') {
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), mat))
+    // 百叶箱：使用 img2threejs 管线重建的程序化模型
+    return createStevensonScreen()
   } else if (type === 'wind') {
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), mat))
-    for (let i = 0; i < 3; i++) {
-      const arm = new THREE.Group(); arm.rotation.y = (i * Math.PI * 2) / 3
-      const s = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), mat); s.position.set(1.1, 0, 0)
-      arm.add(s); g.add(arm)
-    }
+    // 风塔：使用 img2threejs 管线重建的程序化模型（10.5m 格构塔 + 三杯风速仪 + 风向标）
+    return createWindTower()
   } else if (type === 'rain') {
-    g.add(new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.2, 20, 1, true), mat))
+    // 雨量桶：使用 img2threejs 管线重建的程序化模型（不锈钢 70cm×φ20cm 圆柱 + 漏斗沿 + 底座板）
+    return createRainGauge()
   } else if (type === 'evap') {
     g.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.4, 28), mat))
   } else if (type === 'pressure') {
     g.add(new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.16, 12, 28), mat))
   } else if (type === 'visibility') {
-    const a = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1, 0.4), mat); a.position.x = -0.6
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1, 0.4), mat); b.position.x = 0.6
-    g.add(a, b)
+    // 能见度仪：使用 img2threejs 管线重建的程序化模型（3m 立柱 + V 形双筒传感器头）
+    return createVisibilitySensor()
   } else if (type === 'precip') {
     const a = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.35), mat); a.position.x = -0.6
     const b = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.35), mat); b.position.x = 0.6
@@ -181,8 +201,8 @@ function makeHead(type: string, THREE: any, color: number) {
   } else if (type === 'deep') {
     g.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.6, 0.5), mat))
   } else if (type === 'cloudradar') {
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.7), mat))
-    const dish = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.12, 10, 24), mat); dish.position.y = 0.6; g.add(dish)
+    // Ka波段全固态毫米波测云仪：使用 img2threejs 管线重建的程序化模型（雷达罩+筒身+拉索+基座）
+    return createCloudRadar()
   } else if (type === 'radiometer') {
     const dish = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.6, 22, 1, true), mat); dish.rotation.x = Math.PI; dish.position.y = 0.3; g.add(dish)
   } else if (type === 'aerosollidar') {
@@ -205,7 +225,7 @@ function makeHead(type: string, THREE: any, color: number) {
   return g
 }
 
-function makeGroundTexture(THREE: any, shapes: Shape[]) {
+function makeGroundTexture(THREE: any, shapes: Shape[], deviceList: any[] = placeMap) {
   // 纹理与 3D 世界严格 1:1 对齐：去掉边距，像素 = 地理坐标 × m
   const m = 40                                   // 像素 / 米
   const W = FIELD_SIZE * m                       // 场地宽（东向，gx 0..25）
@@ -252,7 +272,7 @@ function makeGroundTexture(THREE: any, shapes: Shape[]) {
   // 设备点位标记（柔和圆点 + 简称）
   c.textAlign = 'center'; c.textBaseline = 'middle'
   c.font = 'bold 11px sans-serif'
-  for (const p of placeMap) {
+  for (const p of deviceList) {
     const meta = FULL.find((e) => e.id === p.id)!
     const color = '#' + meta.color.toString(16).padStart(6, '0')
     c.fillStyle = color
@@ -475,9 +495,11 @@ async function init() {
   // 道路布局：优先加载 public/roads.json（绘制工具导出），否则用内置布局
   const items = await loadRoadItems()
   const shapes = itemsToShapes(items)
+  // 设备布局：优先加载 public/devices.json（拖动导出后的布局），否则用内置 placeMap
+  const deviceMap = await loadDeviceMap()
 
-  // 观测场草地（含南门外引路的贴地纹理）
-  const groundTex = makeGroundTexture(THREE, shapes)
+  // 观测场草地（含南门外引路的贴地纹理）；贴图上的设备圆点+名称标记使用真实布局，避免与 3D 模型位置不一致
+  const groundTex = makeGroundTexture(THREE, shapes, deviceMap)
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(FIELD_SIZE, FIELD_SIZE + NORTH_EXT),
     new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95, metalness: 0 })
@@ -509,7 +531,7 @@ async function init() {
 
   // 设备
   const list = FULL.map((e) => {
-    const slot = placeMap.find((s) => s.id === e.id)
+    const slot = deviceMap.find((s) => s.id === e.id)
     return slot ? { ...e, pos: toWorld(slot.x, slot.y), label: slot.label, customHeight: slot.height } : { ...e, pos: [0, 0] }
   })
 
@@ -519,22 +541,23 @@ async function init() {
     grp.position.set(wx, 0, wz)
     grp.userData = e
 
-    let poleH = e.type === 'deep' ? 1.4 : e.type === 'evap' ? 1.2 : 5
-    if (e.customHeight) poleH = e.customHeight
-    const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 0.13, poleH, 12),
-      new THREE.MeshStandardMaterial({ color: 0xe8ecee, metalness: 0.25, roughness: 0.5 })
-    )
-    pole.position.y = poleH / 2
-    grp.add(pole)
+    const isScreen = e.type === 'th'
+    const isTower = e.type === 'wind'
+    const isRain = e.type === 'rain'
+    const isCloudRadar = e.type === 'cloudradar'
+    const isVisibility = e.type === 'visibility'
 
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.55, 0.65, 0.22, 20),
-      new THREE.MeshStandardMaterial({ color: 0xb9c2c6, metalness: 0.15, roughness: 0.7 })
-    )
-    base.position.y = 0.11
-    grp.add(base)
+    // 设备底座圆盘（百叶箱/风塔/雨量桶/测云仪/能见度仪自带底座，不再额外叠加）
+    if (!isScreen && !isTower && !isRain && !isCloudRadar && !isVisibility) {
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.65, 0.22, 20),
+        new THREE.MeshStandardMaterial({ color: 0xb9c2c6, metalness: 0.15, roughness: 0.7 })
+      )
+      base.position.y = 0.11
+      grp.add(base)
+    }
 
+    // 选中高亮环（贴地）
     const halo = new THREE.Mesh(
       new THREE.RingGeometry(0.62, 0.78, 32),
       new THREE.MeshBasicMaterial({ color: e.color, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
@@ -543,23 +566,27 @@ async function init() {
     halo.position.y = 0.07
     grp.add(halo)
 
+    // 设备本体：百叶箱/风塔/雨量桶/测云仪/能见度仪为程序化模型（自带底座），其余为图标贴底座放置；均不含立杆
     const head = makeHead(e.type, THREE, e.color)
-    head.position.y = poleH + (e.type === 'evap' ? 0.4 : 0.9)
+    const headY = (isScreen || isTower || isRain || isCloudRadar || isVisibility) ? 0 : 0.4
+    head.position.y = headY
     grp.add(head)
     grp.userData.head = head
-    grp.userData.headBaseY = head.position.y
+    grp.userData.headBaseY = headY
     grp.userData.baseEmissive = 0.35
 
     const div = document.createElement('div')
     div.className = 'sci-label'
     div.style.pointerEvents = 'auto'
-    div.style.opacity = '0'
-    div.style.transform = 'scale(0.9)'
+    div.style.opacity = '1'
+    div.style.transform = 'scale(1)'
     div.style.transition = 'opacity 0.2s, transform 0.2s'
     div.innerHTML = `<span class="dot"></span>${e.name}`
     div.onclick = () => selectGroup(grp)
     const label = new CSS2DObject(div)
-    label.position.set(0, poleH + 2.2, 0)
+    label.position.set(0,
+      isTower ? 12 : (isScreen ? 2.2 : (isRain ? 1.1 : (isCloudRadar ? 2.1 : (isVisibility ? 3.6 : 1.5)))),
+      0)
     grp.add(label)
     grp.userData.labelEl = div
 
@@ -597,18 +624,10 @@ function onMove(ev: PointerEvent) {
   if (grp !== hovered) {
     if (hovered) {
       hovered.userData.head.scale.setScalar(1)
-      if (hovered.userData.labelEl && hovered.userData.id !== selected.value?.id) {
-        hovered.userData.labelEl.style.opacity = '0'
-        hovered.userData.labelEl.style.transform = 'scale(0.9)'
-      }
     }
     hovered = grp
     if (hovered) {
       hovered.userData.head.scale.setScalar(1.25)
-      if (hovered.userData.labelEl) {
-        hovered.userData.labelEl.style.opacity = '1'
-        hovered.userData.labelEl.style.transform = 'scale(1)'
-      }
     }
     renderer.domElement.style.cursor = hovered ? 'pointer' : 'grab'
   }
@@ -640,10 +659,6 @@ function clearSelected() {
     if (grp) {
       grp.userData.head.scale.setScalar(1)
       grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = grp.userData.baseEmissive })
-      if (grp.userData.labelEl) {
-        grp.userData.labelEl.style.opacity = '0'
-        grp.userData.labelEl.style.transform = 'scale(0.9)'
-      }
     }
   }
   selected.value = null
@@ -651,11 +666,44 @@ function clearSelected() {
   controls.autoRotate = true
 }
 
+// 世界坐标 → 场地坐标（X 东不变，北向 -Z 还原为 Y）
+const toField = (wx: number, wz: number): [number, number] => [wx, FIELD_SIZE / 2 - wz]
+
+// 导出当前设备布局为 devices.json（可放入 public/ 后由页面自动加载）
+function exportLayout() {
+  const out = FULL.map((e: any) => {
+    const grp = groups.find((g: any) => g.userData.id === e.id)
+    const slot = placeMap.find((s: any) => s.id === e.id)
+    const [wx, wz] = grp ? [grp.position.x, grp.position.z] : [0, 0]
+    const [x, y] = toField(wx, wz)
+    return {
+      x: +x.toFixed(2),
+      y: +y.toFixed(2),
+      id: e.id,
+      label: (grp?.userData.label as string) || slot?.label || e.name,
+      ...(slot?.height ? { height: slot.height } : {}),
+    }
+  })
+  const json = JSON.stringify(out, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'devices.json'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 function animate() {
   animId = requestAnimationFrame(animate)
   const t = clock.getElapsedTime()
+  const delta = clock.getDelta()
   groups.forEach((g, i) => {
     if (g.userData.head) g.userData.head.position.y = g.userData.headBaseY + Math.sin(t * 1.2 + i) * 0.1
+    // 调用设备自定义动画（如风塔风杯旋转）
+    if (g.userData.head?.userData?.tick) g.userData.head.userData.tick(delta)
   })
   controls.update()
   renderer.render(scene, camera)
@@ -688,13 +736,9 @@ onBeforeUnmount(() => {
     <div ref="container" class="canvas-wrap"></div>
 
     <div class="top-bar">
-      <span class="sci-kicker">3D INTERACTIVE GUIDE</span>
-      <h1>虚拟观测场导览</h1>
-      <p>25m × 25m · 白色围栏 + 北门 · 0.5m 虚线网格 · 道路可由 /road-planner.html 导出</p>
+      <span class="sci-kicker">地面气象观测场</span>
       <div class="grid-toggle">
-        <button class="sci-btn small" @click="toggleGrid">
-          {{ showGrid ? '隐藏网格' : '显示网格' }}
-        </button>
+        <button class="sci-btn small" @click="exportLayout">导出布局 JSON</button>
       </div>
     </div>
 
@@ -713,7 +757,7 @@ onBeforeUnmount(() => {
       </div>
     </transition>
 
-    <div class="hint">提示：白色为尖桩围栏（北侧为大门），浅灰为步道与设备便道，虚线网格间距 0.5m；道路布局可用 public/roads.json 覆盖</div>
+    <div class="hint">提示：白色为尖桩围栏（北侧为大门），浅灰为步道与设备便道；点击设备出现坐标轴即可拖动，拖好后点「导出布局 JSON」下载 devices.json 放入 public 目录</div>
   </div>
 </template>
 
