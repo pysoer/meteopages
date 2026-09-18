@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="visibility"
+  image="/equipment/visibility.jpg"
   title="能见度传感器"
   subtitle="测量大气能见度的散射式仪器"
   intro="能见度仪主要用于测量大气能见度，以气象光学视程（MOR）表示。气象光学视程是指白炽灯发出色温为2700K的平行光束的光通量，在大气中削弱至初始值的5%所通过的路径长度。散射能见度仪通过测量散射系数从而估算出气象光学视程。"

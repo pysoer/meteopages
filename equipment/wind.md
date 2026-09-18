@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="wind"
+  image="/equipment/wind.png"
   title="风塔"
   subtitle="安装风向、风速传感器的测风塔"
   intro="风塔用于安装风向和风速传感器，测量距离地面10–12米高的风向和风速。风向是指风的来向，自动观测时风向以度（°）为单位；风速是指单位时间内空气移动的水平距离，以米/秒（m/s）为单位，取一位小数。"

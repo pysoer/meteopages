@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="radiometer"
+  image="/equipment/radiometer.jpg"
   title="微波辐射计"
   subtitle="基于大气微波被动遥感连续探测温湿廓线与云水含量"
   intro="微波辐射计基于大气微波遥感技术，通过多通道连续探测大气水汽和氧气的自然微波辐射，实时获取对流层（含边界层）的温度、湿度、云水分布及水汽、液态水含量等参数。"

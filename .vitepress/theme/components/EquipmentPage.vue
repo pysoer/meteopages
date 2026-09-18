@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { withBase } from 'vitepress'
 import EquipImage from './EquipImage.vue'
 import VideoBlock from './VideoBlock.vue'
 
@@ -26,7 +27,7 @@ defineProps<{
         <div class="sci-card media">
           <span class="corner tl" /><span class="corner tr" />
           <span class="corner bl" /><span class="corner br" />
-          <img v-if="image" :src="image" :alt="title" class="real-img" />
+          <img v-if="image" :src="withBase(image)" :alt="title" class="real-img" />
           <EquipImage v-else :type="type" :label="title" />
           <VideoBlock :src="video" :poster="poster" :caption="subtitle" />
         </div>

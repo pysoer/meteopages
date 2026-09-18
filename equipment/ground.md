@@ -4,7 +4,8 @@ aside: false
 
 <EquipmentPage
   type="ground"
-  title="地温场"
+  image="/equipment/ground.jpg"
+  title="浅层低温观测"
   subtitle="地面与浅层地温观测地段"
   intro="地温场是指地面和浅层地温的观测地段，设在观测场西南侧2米（南北向）×4米（东西向）的疏松平整裸地上，用于测量土壤表面的地面温度、离地面5、10、15、20cm深度的浅层地温。"
   :specs="[

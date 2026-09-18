@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="gnssmet"
+  image="/equipment/gnssmet.png"
   title="GNSS/MET 地基导航卫星水汽探测仪"
   subtitle="利用导航卫星信号遥感大气可降水量等参数"
   intro="GNSS/MET 地基导航卫星水汽探测仪利用导航卫星发射的 L 波段信号探测大气可降水量等气象要素，具有全天候、高精度、高时空分辨率、自校准和低成本等优点。"

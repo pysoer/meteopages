@@ -1,38 +1,21 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vitepress'
+import { EQUIPMENTS } from '../../equipments'
 
 const router = useRouter()
 const canvas = ref<HTMLCanvasElement | null>(null)
 let raf = 0
 
-const stats = [
-  { v: '19', k: '观测设备类型' },
-  { v: '25+', k: '气象要素' },
-  { v: '24h', k: '连续自动观测' },
-  { v: '1956', k: '建站年份' }
-]
+// 首页卡片由 equipments.ts 中 home:true 的设备派生
+const items = EQUIPMENTS
+  .filter((e) => e.home)
+  .map((e) => ({ link: '/equipment/' + e.type, type: e.type, title: e.homeTitle ?? e.name, desc: e.desc }))
 
-const items = [
-  { link: '/equipment/th', type: 'th', title: '百叶箱（温湿度）', desc: '白色玻璃钢百叶箱，安装温湿度传感器，防辐射通风' },
-  { link: '/equipment/wind', type: 'wind', title: '风塔', desc: '10–12m 高，测风向与风速' },
-  { link: '/equipment/rainfall', type: 'rain', title: '翻斗式雨量传感器', desc: '翻斗计数，计量降水量' },
-  { link: '/equipment/visibility', type: 'visibility', title: '能见度传感器', desc: '散射法测气象光学视程 MOR' },
-  { link: '/equipment/precip', type: 'precip', title: '降水现象仪', desc: '激光识别雨、雪、冰雹等降水现象' },
-  { link: '/equipment/phenom', type: 'phenom', title: '天气现象视频观测仪', desc: '计算机视觉识别云、霜、积雪等' },
-  { link: '/equipment/ground', type: 'ground', title: '地温场', desc: '测地面及 5–20cm 浅层地温' },
-  { link: '/equipment/sunshine', type: 'sunshine', title: '日照传感器', desc: '记录太阳实际照射时数' },
-  { link: '/equipment/grass', type: 'grass', title: '草面温度传感器', desc: '贴地 6cm 测草温，霜冻预警' },
-  { link: '/equipment/deep', type: 'deep', title: '深层地温传感器', desc: '测 40–320cm 深层地温' },
-  { link: '/equipment/evap', type: 'evap', title: '蒸发观测设备', desc: 'E-601 蒸发皿测水面蒸发' },
-  { link: '/equipment/pressure', type: 'pressure', title: '气压传感器', desc: '测量本站气压' },
-  { link: '/equipment/cloudradar', type: 'cloudradar', title: '毫米波测云仪', desc: '毫米波散射探测云的垂直结构' },
-  { link: '/equipment/radiometer', type: 'radiometer', title: '微波辐射计', desc: '被动微波遥感温湿廓线与云水' },
-  { link: '/equipment/aerosollidar', type: 'aerosollidar', title: '气溶胶激光雷达', desc: '激光遥感气溶胶浓度与分布' },
-  { link: '/equipment/windprofiler', type: 'windprofiler', title: '风廓线雷达', desc: '湍流散射连续获取风场廓线' },
-  { link: '/equipment/gnssmet', type: 'gnssmet', title: 'GNSS/MET 水汽探测仪', desc: '导航卫星信号反演大气可降水量' },
-  { link: '/equipment/lidarwind', type: 'lidarwind', title: '3D 激光测风雷达', desc: '多普勒激光获取三维风场' },
-  { link: '/equipment/weathermod', type: 'weathermod', title: '人工影响天气装备', desc: '火箭/高炮/烟炉/飞机催化增雨防雹' }
+const stats = [
+  { v: String(items.length), k: '观测设备类型' },
+  { v: '25+', k: '气象要素' },
+  { v: '24h', k: '连续自动观测' }
 ]
 
 const go = (link: string) => router.go(link)
@@ -87,7 +70,7 @@ onMounted(() => {
       <canvas ref="canvas" class="net"></canvas>
       <div class="hero-inner">
         <span class="sci-kicker">GROUND METEOROLOGICAL OBSERVATORY</span>
-        <h1 class="htitle">气象地面观测场<br /><span class="grad">设备数字导览</span></h1>
+        <h1 class="htitle">地面气象观测场<br /><span class="grad">设备数字导览</span></h1>
         <p class="lead">
           以可视化方式带您认识观测场内的各类仪器 —— 温湿度、风向风速、降水、蒸发、气压与能见度等。
           支持 <b>3D 交互导览</b>，点击设备即可了解其原理与参数。

@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="phenom"
+  image="/equipment/phenom.jpg"
   title="天气现象视频观测仪"
   subtitle="基于计算机视觉的天气现象观测仪"
   intro="天气现象视频观测仪自动观测识别总云量、云状、霜、露、雨凇、雾凇、结冰、积雪和雪深等天气现象（或气象要素），是应用计算机视觉和深度学习技术，对视频采集器拍摄的天气现象实现自动观测识别。"

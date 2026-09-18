@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="precip"
+  image="/equipment/precip.jpg"
   title="降水现象仪"
   subtitle="识别降水现象的激光仪器"
   intro="降水现象仪可以测量毛毛雨、雨、雪、雨夹雪、冰雹等5种降水现象，以及对应的雨滴图谱数据。不同降水现象的降水粒子，因其物理特性的差异，在粒径和下落末速度的分布上各有对应关系。"

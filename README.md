@@ -2,6 +2,8 @@
 
 基于 **VitePress** + **Three.js** 的地面气象观测场设备介绍站点。包含科技感首页、可交互的 **3D 观测场导览**，以及温湿度、风向风速、雨量、蒸发、气压、能见度等设备的独立介绍页（文字 + 示意图 + 演示视频位）。
 
+已实现自动提交到阿里云的边缘函数pages，可直接访问：https://meteopages.pycinrad.cn/
+
 ## 技术栈
 
 - [VitePress](https://vitepress.dev/) —— 静态站点生成器（Markdown 驱动，便于后期维护）

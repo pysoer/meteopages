@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="deep"
+  image="/equipment/deep.jpg"
   title="深层地温传感器"
   subtitle="测量深层土壤温度"
   intro="深层地温传感器观测指安装在观测场东南方位的传感器，可以测量40、80、160、320cm的土壤温度。"

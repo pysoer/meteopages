@@ -15,7 +15,7 @@ import * as THREE from 'three'
 // ============================================================
 // 材质定义（从参考图像素推导 PBR 参数）
 // ============================================================
-function makeMaterials() {
+export function makeMaterials() {
   // 主体白色 — 哑光漆面，轻微黄色老化
   const bodyWhite = new THREE.MeshStandardMaterial({
     color: 0xf0f2f4,
@@ -66,7 +66,7 @@ function makeMaterials() {
 // ============================================================
 
 /** 创建百叶格栅面板 */
-function createLouverPanel(w: number, h: number, slatCount: number, mat: THREE.Material) {
+export function createLouverPanel(w: number, h: number, slatCount: number, mat: THREE.Material) {
   const group = new THREE.Group()
   const slatH = h / (slatCount + 1) * 0.7       // 百叶条高度（留间隙）
   const gap = h / (slatCount + 1) * 0.3           // 间隙
@@ -94,7 +94,7 @@ function createLouverPanel(w: number, h: number, slatCount: number, mat: THREE.M
 }
 
 /** 创建单扇门（含百叶 + 边框 + 铰链 + 搭扣） */
-function createDoor(
+export function createDoor(
   doorW: number, doorH: number,
   isLeft: boolean,
   mats: { louverMat: THREE.Material; bodyWhite: THREE.Material; metalMat: THREE.Material },
@@ -140,7 +140,7 @@ function createDoor(
 }
 
 /** 创建主体箱体 */
-function createCabinet(cabH: number, mats: ReturnType<typeof makeMaterials>) {
+export function createCabinet(cabH: number, mats: ReturnType<typeof makeMaterials>) {
   const cab = new THREE.Group()
   const cabW = 1.0, cabD = 0.75
 
@@ -185,7 +185,7 @@ function createCabinet(cabH: number, mats: ReturnType<typeof makeMaterials>) {
 }
 
 /** 创建屋顶（平顶 + 出檐 + 支撑角铁） */
-function createRoof(cabW: number, cabD: number, mats: ReturnType<typeof makeMaterials>) {
+export function createRoof(cabW: number, cabD: number, mats: ReturnType<typeof makeMaterials>) {
   const roof = new THREE.Group()
   const overhang = 0.12
   const roofW = cabW + overhang * 2

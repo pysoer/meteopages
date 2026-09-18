@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="windprofiler"
+  image="/equipment/windprofiler.png"
   title="风廓线雷达"
   subtitle="利用大气湍流散射连续获取风场随高度的分布"
   intro="风廓线雷达利用大气湍流对电磁波的散射作用进行风场测量，可 24 小时无人值守，连续提供大气水平风场、垂直气流及折射率结构常数等要素随高度的分布，是天气预报与气象保障的新手段。"

@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="grass"
+  image="/equipment/grass.jpg"
   title="草面温度传感器"
   subtitle="贴地测量的草面温度"
   intro="草面温度观测指安装在地面温度和浅层地温场西侧50cm处的草温传感器，草地面积约1平方米。传感器安装在距地6cm高度处，并与地面大致平行，感应部分朝南，用于测量草面温度。"

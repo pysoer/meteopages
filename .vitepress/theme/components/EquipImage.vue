@@ -20,7 +20,6 @@ const accent: Record<string, string> = {
   deep: '#fb923c',
   cloudradar: '#60a5fa',
   radiometer: '#fbbf24',
-  aerosollidar: '#f87171',
   windprofiler: '#818cf8',
   gnssmet: '#34d399',
   lidarwind: '#2dd4bf',
@@ -171,12 +170,6 @@ const accent: Record<string, string> = {
         <circle cx="320" cy="90" r="5" :fill="accent.radiometer" />
       </g>
 
-      <!-- 气溶胶激光雷达：向上激光束 + 粒子 -->
-      <g v-else-if="type === 'aerosollidar'" :stroke="accent.aerosollidar" fill="none" stroke-width="2" filter="url(#glow)">
-        <path d="M308 150 L296 70 L344 70 L332 150 Z" :fill="accent.aerosollidar" fill-opacity="0.1" />
-        <circle cx="312" cy="100" r="3" :fill="accent.aerosollidar" /><circle cx="330" cy="86" r="3" :fill="accent.aerosollidar" />
-        <circle cx="320" cy="118" r="3" :fill="accent.aerosollidar" /><circle cx="324" cy="76" r="2.5" :fill="accent.aerosollidar" />
-      </g>
 
       <!-- 风廓线雷达：多天线阵 -->
       <g v-else-if="type === 'windprofiler'" :stroke="accent.windprofiler" fill="none" stroke-width="2" filter="url(#glow)">

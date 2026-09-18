@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="lidarwind"
+  image="/equipment/lidarwind.png"
   title="3D 激光测风雷达"
   subtitle="相干多普勒激光雷达获取三维风场与风廓线"
   intro="3D 激光测风雷达（多普勒测风激光雷达）通过发射人眼安全激光并探测大气后向散射的多普勒频移，获取三维风矢量、风廓线与湍流信息，具有高时空分辨率、非接触、远程探测的特点。"

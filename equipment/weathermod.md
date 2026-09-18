@@ -4,6 +4,7 @@ aside: false
 
 <EquipmentPage
   type="weathermod"
+  image="/equipment/weathermod.png"
   title="人工影响天气装备"
   subtitle="向云中引入催化剂以增雨、防雹、消雾的作业系统"
   intro="人工影响天气装备用于在适当时机向云体引入催化剂，改变云的微物理过程，实现人工增雨（雪）、防雹、消雨、消雾等目的。主要包括地面发射的增雨防雹火箭与高炮、地面烟炉，以及空中作业的飞机机载催化系统。"
