@@ -1,9 +1,12 @@
 /**
  * 闪电定位仪（Lightning Locator / Lightning Detection Sensor）
  *
- * 参考特征（依据 equipment/lightning.md 描述 + 标准单站闪电定位仪形态）：
- *   - 立柱 + 顶部平面板状天线（VLF/LF 磁场天线 + 电场天线）
- *   - 天线下方为电子机箱，含指示灯与接线口
+ * 形态依据（参考图 public/equipment/lightning.jpg 实拍重建）：
+ *   - 白色圆形底法兰 + 小混凝土基墩
+ *   - 白色圆杆（整机总高约 1.8m，杆身约 0.86m）
+ *   - 杆顶大号竖直胶囊形白色天线罩（甚低频/低频电磁脉冲天线），
+ *     罩宽约 0.44m、高约 0.9m，罩面有竖向板缝
+ *   - 一根电缆贴杆而下
  *
  * 八阶段管线：Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
  */
@@ -14,72 +17,74 @@ export function createLightningLocator(): THREE.Group {
   root.name = 'LightningLocator'
 
   // ── 材质 ──
-  const poleMat = new THREE.MeshStandardMaterial({ color: 0xbfc7cc, roughness: 0.45, metalness: 0.5 })
-  const antMat = new THREE.MeshStandardMaterial({ color: 0xdfe5e9, roughness: 0.4, metalness: 0.35 })
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.55, metalness: 0.3 })
-  const loopMat = new THREE.MeshStandardMaterial({ color: 0x5b666e, roughness: 0.45, metalness: 0.55 })
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.45, metalness: 0.1 })
+  const seamMat = new THREE.MeshStandardMaterial({ color: 0xdde3e7, roughness: 0.55, metalness: 0.08 })
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c6, roughness: 0.4, metalness: 0.6 })
+  const concreteMat = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 0.95, metalness: 0 })
 
-  // ── 1. Blockout：立柱 ──
-  const poleH = 1.5
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, poleH, 16), poleMat)
-  pole.position.y = poleH / 2
+  // ── 1. Blockout：混凝土小基墩 + 白色底法兰 ──
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.08, 24), concreteMat)
+  pad.position.y = 0.04
+  root.add(pad)
+  const baseDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.05, 20), whiteMat)
+  baseDisc.position.y = 0.105
+  root.add(baseDisc)
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2
+    const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.04, 8), metalMat)
+    bolt.position.set(Math.cos(a) * 0.14, 0.145, Math.sin(a) * 0.14)
+    root.add(bolt)
+  }
+
+  // ── 2. Structural：白杆（0.13m → 0.86m） ──
+  const poleBot = 0.13, poleTop = 0.86
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.04, poleTop - poleBot, 16), whiteMat)
+  pole.position.y = (poleTop + poleBot) / 2
   root.add(pole)
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 18), poleMat)
-  foot.position.y = 0.04
-  root.add(foot)
 
-  // ── 2. Structural：顶部板状电场天线 ──
-  const antY = poleH + 0.06
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.42), antMat)
-  plate.position.y = antY
-  root.add(plate)
-  // 天线绝缘支撑
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as [number, number][]) {
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 8), darkMat)
-    stand.position.set(sx * 0.16, antY - 0.06, sz * 0.16)
-    root.add(stand)
+  // ── 3. Form：罩底过渡箍圈（杆顶 → 天线罩底部） ──
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.09, 0.09, 20), whiteMat)
+  collar.position.y = poleTop + 0.045
+  root.add(collar)
+
+  // ── 4. Form：竖直胶囊形天线罩（核心特征） ──
+  // 参考图等比：罩高 ≈ 0.9m、罩宽 ≈ 0.44m → capR=0.22, capLen=0.46
+  const capR = 0.22, capLen = 0.46
+  const radome = new THREE.Mesh(
+    new THREE.CapsuleGeometry(capR, capLen, 8, 28),
+    whiteMat,
+  )
+  // 截面略扁（前后方向压扁，接近实拍的椭圆断面）
+  radome.scale.z = 0.78
+  const radomeBottomY = poleTop + 0.09
+  const radomeCenterY = radomeBottomY + capR + capLen / 2
+  radome.position.y = radomeCenterY
+  root.add(radome)
+  // 罩体竖向板缝（前/后/左/右各一条细凸缝）
+  const ribGeo = new THREE.BoxGeometry(0.012, capLen + capR * 0.9, 0.012)
+  const ribX = capR * 0.995
+  const ribZ = capR * 0.78 * 0.995
+  const ribPos: [number, number][] = [[ribX, 0], [-ribX, 0], [0, ribZ], [0, -ribZ]]
+  for (const [rx, rz] of ribPos) {
+    const rib = new THREE.Mesh(ribGeo, seamMat)
+    rib.position.set(rx, radomeCenterY, rz)
+    root.add(rib)
   }
 
-  // ── 3. Form：两组正交磁场环天线（VLF/LF 磁天线） ──
-  for (const rot of [0, Math.PI / 2]) {
-    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.012, 8, 32), loopMat)
-    loop.rotation.y = rot
-    loop.position.y = antY + 0.28
-    root.add(loop)
-  }
-  // 环天线中心杆
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.5, 10), poleMat)
-  mast.position.y = antY + 0.2
-  root.add(mast)
+  // ── 5. Surface：电缆贴杆而下 ──
+  const cablePts = [
+    new THREE.Vector3(0.04, radomeBottomY, 0.055),
+    new THREE.Vector3(0.05, 0.55, 0.05),
+    new THREE.Vector3(0.045, 0.2, 0.05),
+    new THREE.Vector3(0.06, 0.03, 0.09),
+  ]
+  const cable = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cablePts), 20, 0.009, 8, false),
+    new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8 }),
+  )
+  root.add(cable)
 
-  // ── 4. Surface：电子机箱 + 指示灯 ──
-  const box = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.24), darkMat)
-  box.position.set(0, 0.78, 0.02)
-  root.add(box)
-  // 散热格栅
-  for (let i = 0; i < 4; i++) {
-    const g = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.014, 0.01), poleMat)
-    g.position.set(0, 0.66 + i * 0.05, box.position.z + 0.126)
-    root.add(g)
-  }
-  // 状态灯
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 1.2 })
-  const lamp = new THREE.Mesh(new THREE.CircleGeometry(0.016, 10), lampMat)
-  lamp.position.set(0.1, 0.93, box.position.z + 0.127)
-  root.add(lamp)
-
-  // 接地扁铁
-  const gnd = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.03), poleMat)
-  gnd.position.set(0.12, 0.25, 0.12)
-  root.add(gnd)
-
-  // ── 7. Interaction：状态灯缓慢闪烁（模拟监听中） ──
-  root.userData.tick = (_delta: number) => {
-    const t = performance.now() / 1000
-    const m = lampMat as THREE.MeshStandardMaterial
-    m.emissiveIntensity = 0.4 + (Math.sin(t * 3) > 0.7 ? 1.2 : 0)
-  }
-
-  root.userData.labelHeight = 2.4
+  // 总高 ≈ 1.82m（天线罩顶），符合实机约 1.8m
+  root.userData.labelHeight = 2.0
   return root
 }

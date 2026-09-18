@@ -34,6 +34,9 @@ const loading = ref(true)
 const errorMsg = ref('')
 const showGrid = ref(false) // 默认不显示网格
 
+// 设备是否可拖动：默认 false（禁止拖动），需要时由调用方通过 :draggable="true" 开启
+const props = withDefaults(defineProps<{ draggable?: boolean }>(), { draggable: false })
+
 const FIELD_SIZE = 25 // 观测场边长（米）：25m × 25m 正方形，原点(0,0)在西南角，X 东、Y 北
 const PATH_W = 0.6   // 步道宽度（米），规范小路
 const PAD = 1.4      // 设备便道平台边长（米）
@@ -296,31 +299,12 @@ function makeGroundTexture(THREE: any, shapes: Shape[], deviceList: any[] = plac
     c.restore()
   }
 
-  // 设备点位标记（柔和圆点 + 简称）
-  c.textAlign = 'center'; c.textBaseline = 'middle'
-  c.font = 'bold 11px sans-serif'
-  for (const p of deviceList) {
-    const meta = FULL.find((e) => e.id === p.id)!
-    const color = '#' + meta.color.toString(16).padStart(6, '0')
-    c.fillStyle = color
-    c.beginPath(); c.arc(cx(p.x), cy(p.y) + 0.55 * m, 0.28 * m, 0, Math.PI * 2); c.fill()
-    c.fillStyle = 'rgba(255,255,255,0.92)'
-    c.fillText(p.label, cx(p.x), cy(p.y) + 1.15 * m)
-  }
-
-  // 场地中心标志（25m × 25m 的几何中心 12.5m, 12.5m）
-  c.strokeStyle = '#f59e0b'; c.lineWidth = 3
-  c.beginPath(); c.arc(cx(12.5), cy(12.5), 0.3 * m, 0, Math.PI * 2); c.stroke()
-  c.fillStyle = '#f59e0b'; c.font = 'bold 13px sans-serif'
-  c.fillText('中心标志', cx(12.5), cy(12.5) - 0.5 * m)
+  // 地面仅保留草地 / 步道 / 便道 / 场地边框，不再绘制设备圆点与文字标注
+  // （设备识别由悬浮 CSS2D 标签承担，避免贴地文字与 3D 模型位置错位）
 
   // 场地边框
   c.strokeStyle = '#7d8b7a'; c.lineWidth = 4
   c.strokeRect(0, NORTH_EXT * m, FIELD_SIZE * m, FIELD_SIZE * m)
-
-  // 方位标识（北在上，画在北门外引路区域内）
-  c.fillStyle = 'rgba(255,255,255,0.9)'; c.font = 'bold 26px sans-serif'
-  c.fillText('N', W / 2, 18)
 
   const tex = new THREE.CanvasTexture(canvas)
   tex.colorSpace = THREE.SRGBColorSpace
@@ -611,9 +595,9 @@ async function init() {
 
     const div = document.createElement('div')
     div.className = 'sci-label'
-    div.style.pointerEvents = 'auto'
-    div.style.opacity = '1'
-    div.style.transform = 'scale(1)'
+    div.style.pointerEvents = 'none' // 默认隐藏，不拦截点击，点击设备后再显示
+    div.style.opacity = '0'
+    div.style.transform = 'scale(0.6)'
     div.style.transition = 'opacity 0.2s, transform 0.2s'
     div.innerHTML = `<span class="dot"></span>${e.name}`
     div.onclick = () => selectGroup(grp)
@@ -673,16 +657,30 @@ function findGroup(obj: any): any {
   return o
 }
 
+function setLabelVisible(grp: any, visible: boolean) {
+  const el = grp?.userData?.labelEl
+  if (!el) return
+  el.style.opacity = visible ? '1' : '0'
+  el.style.transform = visible ? 'scale(1)' : 'scale(0.6)'
+  el.style.pointerEvents = visible ? 'auto' : 'none'
+}
+
 function selectGroup(grp: any) {
+  // 先还原上一个选中设备的标签与高亮
+  if (selected.value) {
+    const prev = groups.find((g) => g.userData.id === selected.value.id)
+    if (prev) {
+      prev.userData.head.scale.setScalar(1)
+      prev.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = prev.userData.baseEmissive })
+      setLabelVisible(prev, false)
+    }
+  }
   selected.value = { ...grp.userData }
   controls.autoRotate = false
   grp.userData.head.scale.setScalar(1.4)
   grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = 1.6 })
-  if (grp.userData.labelEl) {
-    grp.userData.labelEl.style.opacity = '1'
-    grp.userData.labelEl.style.transform = 'scale(1)'
-  }
-  tcontrols.attach(grp)
+  setLabelVisible(grp, true)
+  if (props.draggable) tcontrols.attach(grp)
 }
 
 function clearSelected() {
@@ -691,10 +689,11 @@ function clearSelected() {
     if (grp) {
       grp.userData.head.scale.setScalar(1)
       grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = grp.userData.baseEmissive })
+      setLabelVisible(grp, false)
     }
   }
   selected.value = null
-  tcontrols.detach()
+  if (props.draggable) tcontrols.detach()
   controls.autoRotate = true
 }
 
@@ -774,9 +773,6 @@ onBeforeUnmount(() => {
 
     <div class="top-bar">
       <span class="sci-kicker">地面气象观测场</span>
-      <div class="grid-toggle">
-        <button class="sci-btn small" @click="exportLayout">导出布局 JSON</button>
-      </div>
     </div>
 
     <div v-if="loading" class="status">正在加载三维场景…</div>

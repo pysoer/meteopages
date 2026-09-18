@@ -1,13 +1,14 @@
 /**
  * Ka波段全固态毫米波测云仪（Ka-Band All-Solid-State Millimeter-Wave Cloud Radar）
  *
- * 参考图特征（蘑菇头造型）：
- *   - 蘑菇头雷达罩：半球形圆顶 + 宽大外翻裙边（像蘑菇伞盖）
- *   - 圆柱筒身（较矮），带蓝色文字标识 "HTMW / 华腾微波"
- *   - 底部脚架/轮子（非固定混凝土基座）
+ * 形态依据（参考图 public/equipment/cloudradar.png 实拍重建）：
+ *   - 高大混凝土方墩基座，白色圆筒身坐在墩顶（下部灰色环带）
+ *   - 筒顶檐下鼓形段（竖向棱条装饰）
+ *   - 宽大外翻环形平檐 + 其上的锥形天线罩（蘑菇伞盖，核心特征）
+ *   - 檐下 4 根斜拉钢缆 → 地面白色方形锚块
+ *   - 筒身正面接线盒，黑色电缆垂至墩顶并盘绕
  *
- * 八阶段管线产出：
- *   Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
+ * 八阶段管线：Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
  */
 import * as THREE from 'three'
 
@@ -16,171 +17,148 @@ export function createCloudRadar(): THREE.Group {
   root.name = 'CloudRadar'
 
   // ── 材质定义 ──
-  const radomeMat = new THREE.MeshStandardMaterial({
-    color: 0xf0f4f8, roughness: 0.5, metalness: 0.04,
-  }) // 白色玻璃钢雷达罩（微哑光）
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0xf0f4f8, roughness: 0.35, metalness: 0.1,
-  }) // 白色烤漆筒身
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x555555, roughness: 0.45, metalness: 0.35,
-  }) // 深灰金属（法兰、脚架）
-  const cableMat = new THREE.LineBasicMaterial({ color: 0x666666 }) // 钢缆
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.45, metalness: 0.08 })
+  const grayRingMat = new THREE.MeshStandardMaterial({ color: 0x8b939a, roughness: 0.5, metalness: 0.3 })
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x3a4046, roughness: 0.55, metalness: 0.35 })
+  const blueMat = new THREE.MeshStandardMaterial({ color: 0x1a5276, roughness: 0.4, metalness: 0.15 })
+  const concreteMat = new THREE.MeshStandardMaterial({ color: 0xbdb7ab, roughness: 0.95, metalness: 0 })
+  const anchorMat = new THREE.MeshStandardMaterial({ color: 0xe8e6e0, roughness: 0.85, metalness: 0 })
+  const cableMat = new THREE.LineBasicMaterial({ color: 0x555555 })
+  const blackCableMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.85 })
 
-  // ── 1. 底部脚架/底座（参考图：四角轮式脚架） ──
-  const footR = 0.42           // 脚架外接圆半径
-  const footH = 0.22           // 脚架高度
-  const legW = 0.05            // 腿宽
+  // ── 1. Blockout：混凝土方墩基座 + 地面矮圈 ──
+  const plinthH = 0.62
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.5, plinthH, 1.3), concreteMat)
+  plinth.position.y = plinthH / 2
+  root.add(plinth)
+  const curb = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.09, 1.9), concreteMat)
+  curb.position.y = 0.045
+  root.add(curb)
 
-  for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * Math.PI * 2 + Math.PI / 4
-    const lx = Math.cos(angle) * footR
-    const lz = Math.sin(angle) * footR
-    // 腿
-    const leg = new THREE.Mesh(
-      new THREE.BoxGeometry(legW, footH, legW),
-      darkMat,
-    )
-    leg.position.set(lx, footH / 2, lz)
-    root.add(leg)
-    // 轮子（小圆柱）
-    const wheel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
-      new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6, metalness: 0.3 }),
-    )
-    wheel.rotation.x = Math.PI / 2
-    wheel.position.set(lx, 0.03, lz + legW * 0.6)
-    root.add(wheel)
-  }
-
-  // 底板（连接四腿的方形板）
-  const basePlate = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 0.04, 0.7),
-    bodyMat,
-  )
-  basePlate.position.y = footH
-  root.add(basePlate)
-
-  // ── 2. 圆柱筒身（较矮） ──
-  const bodyRadius = 0.35
-  const bodyH = 0.75
-
+  // ── 2. Structural：白色圆筒身（0.62m → 1.98m） ──
+  const bodyR = 0.55
+  const bodyBot = plinthH, bodyTop = 1.98
   const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(bodyRadius, bodyRadius * 1.05, bodyH, 28),
-    bodyMat,
+    new THREE.CylinderGeometry(bodyR, bodyR * 1.05, bodyTop - bodyBot, 28),
+    whiteMat,
   )
-  body.position.y = footH + 0.02 + bodyH / 2
+  body.position.y = (bodyTop + bodyBot) / 2
   root.add(body)
 
-  const bodyTopY = footH + 0.02 + bodyH
-
-  // 筒身顶部法兰盘（连接雷达罩）
-  const flange = new THREE.Mesh(
-    new THREE.CylinderGeometry(bodyRadius + 0.08, bodyRadius + 0.06, 0.06, 28),
-    darkMat,
+  // 筒身下部灰色环带
+  const grayRing = new THREE.Mesh(
+    new THREE.CylinderGeometry(bodyR * 1.05 + 0.015, bodyR * 1.05 + 0.02, 0.24, 28),
+    grayRingMat,
   )
-  flange.position.y = bodyTopY + 0.03
-  root.add(flange)
+  grayRing.position.y = bodyBot + 0.12
+  root.add(grayRing)
 
-  // ── 3. 蘑菇头雷达罩（核心特征！） ──
-  // 参考图：半球形圆顶 + 非常宽的外翻裙边，整体像蘑菇
-  const domeR = 0.38              // 半球半径
-  const skirtMaxR = 1.1           // 裙边最大外延半径
-  const skirtW = 0.72             // 裙边水平宽度
-  const domeCenterY = bodyTopY + 0.06 + domeR  // 半球球心 Y
+  // ── 3. Surface：圆形设备标志（白底蓝圈） ──
+  const logoY = 1.45
+  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.11, 20), whiteMat)
+  logo.position.set(0, logoY, bodyR * 1.03 + 0.005)
+  root.add(logo)
+  const logoRing = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.013, 8, 24), blueMat)
+  logoRing.position.set(0, logoY, bodyR * 1.03 + 0.004)
+  root.add(logoRing)
+  // 设备名称蓝色细横带（示意 KA-BAND CLOUD RADAR 字样位置）
+  const nameBand = new THREE.Mesh(new THREE.CylinderGeometry(bodyR + 0.012, bodyR + 0.012, 0.09, 28, 1, true), blueMat)
+  nameBand.position.y = 1.68
+  root.add(nameBand)
 
-  // 3a. 半球形圆顶（SphereGeometry，取上半球）
-  const domeGeo = new THREE.SphereGeometry(domeR, 36, 18, 0, Math.PI * 2, 0, Math.PI / 2)
-  const dome = new THREE.Mesh(domeGeo, radomeMat)
-  dome.position.y = domeCenterY
-  root.add(dome)
-
-  // 3b. 外翻裙边（LatheGeometry 旋转轮廓——从半球底部向外翻卷）
-  // 轮廓点：(r, y) 从半球底边开始向外下翻
-  const skirtPoints: [number, number][] = []
-  const skirtSegments = 20
-  for (let i = 0; i <= skirtSegments; i++) {
-    const t = i / skirtSegments
-    // 从半球底边 (domeR, domeCenterY) 开始，向外向下翻卷
-    const r = domeR + t * skirtW
-    // Y 先平缓下降再微微上翘（模拟翻边厚度）
-    const y = domeCenterY - t * t * 0.12
-    skirtPoints.push([r, y])
-  }
-  // 用 LatheGeometry 生成旋转体
-  const skirtShape = new THREE.Shape()
-  skirtPoints.forEach((p, i) => {
-    if (i === 0) skirtShape.moveTo(p[0], p[1])
-    else skirtShape.lineTo(p[0], p[1])
-  })
-  const skirtGeo = new THREE.LatheGeometry(
-    skirtPoints.map((p) => new THREE.Vector2(p[0], p[1] - domeCenterY)),
-    36,
-  )
-  const skirt = new THREE.Mesh(skirtGeo, radomeMat)
-  skirt.position.y = domeCenterY
-  root.add(skirt)
-
-  // 3c. 裙边底沿（Torus 增加厚度感）
-  const skirtEdge = new THREE.Mesh(
-    new THREE.TorusGeometry(skirtMaxR, 0.025, 10, 36),
-    radomeMat,
-  )
-  skirtEdge.rotation.x = Math.PI / 2
-  skirtEdge.position.y = domeCenterY - 0.12
-  root.add(skirtEdge)
-
-  // ── 4. 表面细节 ──
-  // 筒身蓝色标识区域（模拟"HTMW 华腾微波"文字带）
-  const labelBand = new THREE.Mesh(
-    new THREE.CylinderGeometry(bodyRadius + 0.004, bodyRadius + 0.004, 0.22, 28),
-    new THREE.MeshStandardMaterial({ color: 0x1a5276, roughness: 0.35, metalness: 0.15 }),
-  )
-  labelBand.position.y = footH + 0.02 + bodyH * 0.55
-  root.add(labelBand)
-
-  // 接线盒（筒身下部小凸起）
-  const jbox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.08, 0.1),
-    darkMat,
-  )
-  jbox.position.set(0, footH + 0.08, bodyRadius * 0.75)
+  // ── 4. Surface：接线盒 + 垂落盘绕的黑色电缆 ──
+  const jbox = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.1), darkMat)
+  jbox.position.set(0.22, 0.92, bodyR * 1.02)
   root.add(jbox)
+  const cableOut = new THREE.Mesh(
+    new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.26, 0.86, bodyR * 0.98),
+        new THREE.Vector3(0.48, 0.68, 0.32),
+        new THREE.Vector3(0.42, plinthH + 0.02, 0.18),
+      ]),
+      16, 0.02, 8, false,
+    ),
+    blackCableMat,
+  )
+  root.add(cableOut)
+  // 墩顶盘绕电缆圈
+  const coil = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 8, 28), blackCableMat)
+  coil.rotation.x = Math.PI / 2
+  coil.position.set(0.3, plinthH + 0.03, 0.05)
+  root.add(coil)
 
-  // ── 5. 斜拉钢缆（从法兰向四个方向拉到地面） ──
-  const cableAttachY = bodyTopY + 0.05
-  const cableGroundR = 1.7
+  // ── 5. Form：檐下鼓形段（竖向棱条装饰） ──
+  const drumR = 0.64
+  const drumH = 0.26
+  const drumBot = bodyTop
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(drumR, bodyR + 0.02, drumH, 28), whiteMat)
+  drum.position.y = drumBot + drumH / 2
+  root.add(drum)
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.03, drumH * 0.85, 0.015), whiteMat)
+    rib.position.set(Math.cos(a) * (drumR + 0.004), drumBot + drumH / 2, Math.sin(a) * (drumR + 0.004))
+    rib.rotation.y = -a
+    root.add(rib)
+  }
 
+  // ── 6. Form：宽大外翻环形平檐（蘑菇伞盖的帽檐） ──
+  const brimY = drumBot + drumH
+  const brimOuter = 1.2
+  const brimPts: THREE.Vector2[] = [
+    new THREE.Vector2(drumR + 0.02, 0.1),
+    new THREE.Vector2(1.02, 0.1),
+    new THREE.Vector2(brimOuter, 0.03),
+    new THREE.Vector2(brimOuter + 0.015, -0.03),
+    new THREE.Vector2(brimOuter - 0.02, -0.09),
+    new THREE.Vector2(drumR + 0.02, -0.03),
+  ]
+  const brimMat = whiteMat.clone()
+  brimMat.side = THREE.DoubleSide
+  const brim = new THREE.Mesh(new THREE.LatheGeometry(brimPts, 44), brimMat)
+  brim.position.y = brimY
+  root.add(brim)
+
+  // ── 7. Form：锥形天线罩（坐在宽檐上的钝锥顶，核心特征！） ──
+  // Lathe 轮廓法线朝内，使用双面材质避免罩体呈暗色
+  const coneMat = whiteMat.clone()
+  coneMat.side = THREE.DoubleSide
+  const coneBaseR = 0.86
+  const coneH = 0.72
+  const conePts: THREE.Vector2[] = []
+  const CN = 18
+  for (let i = 0; i <= CN; i++) {
+    const t = i / CN
+    conePts.push(new THREE.Vector2(coneBaseR * t, coneH * (1 - Math.pow(t, 1.15))))
+  }
+  const cone = new THREE.Mesh(new THREE.LatheGeometry(conePts, 44), coneMat)
+  cone.position.y = brimY + 0.08
+  root.add(cone)
+  // 锥顶小圆头
+  const coneCap = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 10), whiteMat)
+  coneCap.position.y = brimY + 0.08 + coneH
+  root.add(coneCap)
+
+  // ── 8. Surface：斜拉钢缆（檐下鼓形段 → 地面白色方形锚块）×4 ──
+  const attachY = drumBot + drumH * 0.5
+  const groundR = 1.75
   for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * Math.PI * 2 + Math.PI / 4
-    const gx = Math.cos(angle) * cableGroundR
-    const gz = Math.sin(angle) * cableGroundR
-
-    const pts = [
-      new THREE.Vector3(0, cableAttachY, 0),
-      new THREE.Vector3(gx, 0, gz),
-    ]
-    const cableGeo = new THREE.BufferGeometry().setFromPoints(pts)
-    root.add(new THREE.Line(cableGeo, cableMat))
-
-    // 锚块
-    const anchor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.05, 0.16),
-      new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.85, metalness: 0.05 }),
-    )
-    anchor.position.set(gx, 0.025, gz)
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4
+    const gx = Math.cos(a) * groundR
+    const gz = Math.sin(a) * groundR
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(Math.cos(a) * drumR, attachY, Math.sin(a) * drumR),
+      new THREE.Vector3(gx, 0.05, gz),
+    ])
+    root.add(new THREE.Line(geo, cableMat))
+    const anchor = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.07, 0.38), anchorMat)
+    anchor.position.set(gx, 0.035, gz)
     root.add(anchor)
   }
 
-  // ── 高度汇总 ──
-  // 脚架: 0 ~ 0.22m
-  // 底板: 0.22 ~ 0.26m
-  // 筒身: 0.26 ~ 1.01m
-  // 法兰: 1.01 ~ 1.07m
-  // 半球圆顶中心: 1.07 + 0.38 = 1.45m
-  // 圆顶最高点: 1.45 + 0.38 = 1.83m
-  // 裙边最宽处 R=1.1m
-  // 总高 ≈ 1.85m
-
+  // 高度汇总：基座 0~0.62 / 筒身 0.62~1.98 / 鼓段 1.98~2.24 / 檐 2.24~2.32 / 锥顶 → ≈3.05
+  // 总高 ≈ 3.05m，伞檐最宽处直径 ≈ 2.43m
+  root.userData.labelHeight = 3.4
   return root
 }

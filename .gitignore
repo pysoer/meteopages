@@ -6,3 +6,7 @@ node_modules
 *.log
 .DS_Store
 .codebuddy
+# 开发与验证产物（不纳入构建/提交）
+_model_preview/
+.workbuddy/
+.vitepress/theme/components/models/__preview/

@@ -1,10 +1,11 @@
 /**
  * 降水现象仪（Precipitation Phenomenon Sensor，激光雨滴谱 / 粒子图谱）
  *
- * 形态依据（按行业标准激光降水现象仪实拍形态重建，如 DSG5 / Parsivel 类）：
- *   - 单根竖直立柱 + 顶部水平「光学头横梁」——不再是两根落地立柱
- *   - 横梁两端各向下伸出一段短臂，两臂内侧面为发射 / 接收光学窗，中间是开放采样缝
- *   - 立柱中部为接线盒与电缆，底部为法兰 + 地脚板
+ * 形态依据（参考图 public/equipment/precip.jpg —— WUSH-FPW 型实拍重建）：
+ *   - 白色立式机柜架在短支架上（底板 + 方形立柱基座）
+ *   - 柜顶黑色短立柱，顶端分叉成 V 形叉臂
+ *   - 两臂各托一个水平黑色圆筒光学头，端口相对、中间留开放采样缝
+ *   - 机柜正面标签带
  *
  * 八阶段管线：Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
  */
@@ -15,124 +16,125 @@ export function createPrecipitationPhenomena(): THREE.Group {
   root.name = 'PrecipitationPhenomena'
 
   // ── 材质 ──
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdfe5e9, roughness: 0.42, metalness: 0.35 })
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.55, metalness: 0.3 })
-  const metalMat = new THREE.MeshStandardMaterial({ color: 0xb6bfc5, roughness: 0.35, metalness: 0.6 })
-  const lensMat = new THREE.MeshStandardMaterial({
-    color: 0x9fe3ff, emissive: 0x2f6f9f, emissiveIntensity: 0.8, roughness: 0.12, metalness: 0.1,
-  })
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf0f3f5, roughness: 0.45, metalness: 0.15 })
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c6, roughness: 0.4, metalness: 0.6 })
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x1c1f22, roughness: 0.5, metalness: 0.35 })
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x33383d, roughness: 0.55, metalness: 0.3 })
 
-  // ── 1. Blockout：地脚板 + 法兰底座 ──
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.4), metalMat)
-  plate.position.y = 0.02
+  // ── 1. Blockout：底板 + 支架基座 ──
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.5), whiteMat)
+  plate.position.y = 0.025
   root.add(plate)
-  const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.06, 20), metalMat)
-  flange.position.y = 0.07
-  root.add(flange)
-
-  // ── 2. Structural：单立柱 ──
-  const poleH = 1.42
-  const poleBase = 0.10
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, poleH, 20), bodyMat)
-  pole.position.y = poleBase + poleH / 2
-  root.add(pole)
-  const poleTopY = poleBase + poleH            // 1.52
-
-  // 立柱抱箍（两处）
-  for (const hy of [poleTopY - 0.18, 0.75]) {
-    const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.035, 20), metalMat)
-    clamp.position.y = hy
-    root.add(clamp)
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.05, 8), metalMat)
+      bolt.position.set(sx * 0.18, 0.07, sz * 0.18)
+      root.add(bolt)
+    }
   }
+  const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.55, 0.26), whiteMat)
+  pedestal.position.y = 0.05 + 0.275
+  root.add(pedestal)
 
-  // ── 3. Form：顶部光学头横梁 + 两端下垂臂 ──
-  const barL = 0.74          // 横梁总长
-  const barH = 0.13
-  const barD = 0.17
-  const armW = 0.13
-  const armH = 0.34
-  const barCenterY = poleTopY + 0.01 + barH / 2
+  // ── 2. Structural：白色机柜（0.6m → 1.35m） ──
+  const cabW = 0.55, cabH = 0.75, cabD = 0.42
+  const cabY = 0.6 + cabH / 2
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(cabW, cabH, cabD), whiteMat)
+  cabinet.position.y = cabY
+  root.add(cabinet)
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(cabW + 0.04, 0.03, cabD + 0.04), whiteMat)
+  lip.position.y = 0.6 + cabH + 0.015
+  root.add(lip)
+  // 正面标签带（简化文字）
+  const label = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.008), darkMat)
+  label.position.set(0, cabY + 0.16, cabD / 2 + 0.005)
+  root.add(label)
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.035, 16), new THREE.MeshStandardMaterial({ color: 0x2456a8, roughness: 0.4 }))
+  dot.position.set(-0.13, cabY - 0.05, cabD / 2 + 0.006)
+  root.add(dot)
+  // 柜门缝
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.006, cabH - 0.1, 0.008), darkMat)
+  seam.position.set(0, cabY, cabD / 2 + 0.004)
+  root.add(seam)
 
-  const headBar = new THREE.Mesh(new THREE.BoxGeometry(barL, barH, barD), bodyMat)
-  headBar.position.y = barCenterY
-  root.add(headBar)
+  // ── 3. Form：柜顶黑色短立柱 ──
+  const mastBot = 0.6 + cabH + 0.03
+  const mastTop = mastBot + 0.42
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, mastTop - mastBot, 14), blackMat)
+  mast.position.y = (mastBot + mastTop) / 2
+  root.add(mast)
 
-  // 横梁顶部整体防雨罩（略出檐）
-  const hood = new THREE.Mesh(new THREE.BoxGeometry(barL + 0.05, 0.028, barD + 0.05), darkMat)
-  hood.position.y = barCenterY + barH / 2 + 0.014
-  root.add(hood)
-
-  const armX = barL / 2 - armW / 2
-  const armCenterY = barCenterY - barH / 2 - armH / 2
+  // ── 4. Form：V 形叉臂（黑色） ──
+  const yokeTopY = mastTop + 0.26
+  const yokeSpread = 0.3
   for (const sign of [-1, 1]) {
-    // 下垂臂
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(armW, armH, barD - 0.02), bodyMat)
-    arm.position.set(sign * armX, armCenterY, 0)
+    const dx = sign * yokeSpread, dy = yokeTopY - mastTop
+    const len = Math.hypot(dx, dy)
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, len, 12), blackMat)
+    // 中点 + 倾斜（绕 Z 轴）
+    arm.position.set(sign * yokeSpread / 2, (mastTop + yokeTopY) / 2, 0)
+    arm.rotation.z = -Math.atan2(dx, dy)
     root.add(arm)
-    // 臂底面封板
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(armW + 0.02, 0.02, barD), darkMat)
-    cap.position.set(sign * armX, armCenterY - armH / 2, 0)
-    root.add(cap)
-    // 内侧光学窗（发射 / 接收，相对而立）
-    const win = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.2, 0.09), lensMat)
-    win.position.set(sign * (armX - armW / 2 - 0.008), armCenterY, 0)
-    root.add(win)
-    // 窗框
-    const ring = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.24, 0.12), metalMat)
-    ring.position.set(sign * (armX - armW / 2 - 0.002), armCenterY, 0)
-    root.add(ring)
   }
 
-  // 立柱与横梁之间的斜撑
+  // ── 5. Form：两个水平对射的黑色圆筒光学头 ──
+  const headR = 0.08, headL = 0.44
+  const headX = 0.34                     // 筒中心距中轴
+  const headY = yokeTopY - 0.04
   for (const sign of [-1, 1]) {
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.24, 0.03), metalMat)
-    brace.position.set(sign * 0.09, poleTopY - 0.06, 0)
-    brace.rotation.z = sign * 0.5
-    root.add(brace)
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(headR, headR, headL, 22), blackMat)
+    head.rotation.z = Math.PI / 2
+    head.position.set(sign * headX, headY, 0)
+    root.add(head)
+    // 内端面（发射/接收窗，深灰环）
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(headR - 0.015, 0.012, 8, 22), darkMat)
+    ring.rotation.y = Math.PI / 2
+    ring.position.set(sign * (headX - headL / 2 - 0.005), headY, 0)
+    root.add(ring)
+    const lens = new THREE.Mesh(
+      new THREE.CircleGeometry(headR - 0.02, 18),
+      new THREE.MeshStandardMaterial({ color: 0x35424e, roughness: 0.15, metalness: 0.5 }),
+    )
+    lens.rotation.y = sign * -Math.PI / 2
+    lens.position.set(sign * (headX - headL / 2), headY, 0)
+    root.add(lens)
+    // 筒尾端盖
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(headR + 0.008, headR + 0.008, 0.02, 22), darkMat)
+    tail.rotation.z = Math.PI / 2
+    tail.position.set(sign * (headX + headL / 2), headY, 0)
+    root.add(tail)
   }
 
-  // ── 4. Form：开放采样缝内的激光光带（两窗之间的水平激光面） ──
-  const gapX = 2 * (armX - armW / 2 - 0.016)      // ≈0.44
+  // ── 6. Interaction：开放采样缝内的激光光带（微弱呼吸） ──
   const beamPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(gapX, 0.2),
+    new THREE.PlaneGeometry(2 * (headX - headL / 2) - 0.02, headR * 1.4),
     new THREE.MeshBasicMaterial({
-      color: 0x7fd4ff, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false,
+      color: 0xff5a5a, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false,
     }),
   )
   beamPlane.rotation.y = Math.PI / 2
-  beamPlane.position.y = armCenterY
+  beamPlane.position.y = headY
   root.add(beamPlane)
 
-  // ── 5. Surface：接线盒 + 电缆 ──
-  const jbox = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.24, 0.12), darkMat)
-  jbox.position.set(0, 0.9, 0.11)
-  root.add(jbox)
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x34d399, emissiveIntensity: 1.1 })
-  const lamp = new THREE.Mesh(new THREE.CircleGeometry(0.013, 10), lampMat)
-  lamp.position.set(0.045, 0.96, 0.171)
-  root.add(lamp)
-
+  // ── 7. Surface：电缆（柜底 → 地面） ──
   const cablePts = [
-    new THREE.Vector3(-0.06, 0.8, 0.14),
-    new THREE.Vector3(-0.14, 0.4, 0.2),
-    new THREE.Vector3(-0.2, 0.04, 0.24),
+    new THREE.Vector3(0.1, 0.62, 0.18),
+    new THREE.Vector3(0.16, 0.3, 0.24),
+    new THREE.Vector3(0.2, 0.04, 0.26),
   ]
   const cable = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cablePts), 18, 0.011, 8, false),
-    new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.75 }),
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cablePts), 14, 0.01, 8, false),
+    new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.8 }),
   )
   root.add(cable)
 
-  // ── 6. Interaction：激光采样面呼吸闪烁 ──
   root.userData.tick = (_delta: number) => {
     const t = performance.now() / 1000
     const m = beamPlane.material as THREE.MeshBasicMaterial
-    m.opacity = 0.16 + Math.abs(Math.sin(t * 1.6)) * 0.18
-    const l = lampMat as THREE.MeshStandardMaterial
-    l.emissiveIntensity = 0.5 + (Math.sin(t * 2) > 0.6 ? 1.0 : 0.1)
+    m.opacity = 0.06 + Math.abs(Math.sin(t * 1.6)) * 0.08
   }
 
-  // 总高 ≈ 1.67m（光学头臂底 ~1.06m）
-  root.userData.labelHeight = 2.05
+  // 总高 ≈ 2.55m（光学头中心 ~2.1m）
+  root.userData.labelHeight = 2.7
   return root
 }
