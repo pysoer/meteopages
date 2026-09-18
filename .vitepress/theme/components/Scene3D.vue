@@ -194,6 +194,59 @@ const groups: any[] = []
 let hovered: any = null
 let dragging = false
 
+// —— 点击/触摸拾取状态（移动端没有 hover，且手指落点误差大） ——
+const activePointers = new Set<number>()
+let downInfo: { x: number; y: number; t: number; type: string } | null = null
+const TAP_SLOP: Record<string, number> = { mouse: 6, pen: 12, touch: 18 } // 允许的抖动像素
+const TAP_MAX_MS = 800
+
+// 生成「不可见但可拾取」的碰撞代理：模型包围盒 + 外扩余量。
+// 细小设备（雨量筒、草温传感器等）在手机上几乎点不中，靠它扩大命中范围。
+function makeHitProxy(THREE: any, head: any, grp: any) {
+  head.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(head)
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+  const localCY = center.y - grp.position.y
+  const h = Math.max(size.y, 0.5) + 0.3
+  const r = Math.min(Math.max(Math.max(size.x, size.z, 0.5) / 2 + 0.35, 0.65), 1.2)
+  // colorWrite=false：不参与画面绘制，但 Mesh.raycast 仍然生效
+  const proxy = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, h, 12),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false })
+  )
+  proxy.position.y = Math.max(localCY, h / 2)
+  proxy.renderOrder = -1
+  proxy.userData.isHitProxy = true
+  return proxy
+}
+
+// 屏幕坐标 → 设备分组（未命中返回 null）
+// fallbackPx > 0 时，射线没打中也会退化为「屏幕上离落点最近且在阈值内的设备」，
+// 这是手机端能稳定点中小设备的关键。
+function pickAt(clientX: number, clientY: number, fallbackPx = 0): any {
+  const rect = renderer.domElement.getBoundingClientRect()
+  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1
+  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, camera)
+  const hit = raycaster.intersectObjects(groups, true)[0]
+  if (hit) return findGroup(hit.object)
+  if (fallbackPx <= 0) return null
+
+  let best: any = null, bestD = fallbackPx
+  for (const g of groups) {
+    const p = g.position.clone()
+    p.y += 0.8 // 取设备「身体」中部而非脚下
+    p.project(camera)
+    if (p.z > 1) continue // 在相机背后
+    const sx = rect.left + (p.x * 0.5 + 0.5) * rect.width
+    const sy = rect.top + (-p.y * 0.5 + 0.5) * rect.height
+    const d = Math.hypot(sx - clientX, sy - clientY)
+    if (d < bestD) { bestD = d; best = g }
+  }
+  return best
+}
+
 // 整页跳转：避免 SPA 内容过渡(Transition) 与 Three.js 画布卸载冲突
 // 该冲突会导致 Vue 在 patch 旧页面时报 "Cannot read properties of null (reading 'subTree')"
 const go = (link: string) => {
@@ -606,6 +659,9 @@ async function init() {
     grp.add(label)
     grp.userData.labelEl = div
 
+    // 不可见碰撞代理：扩大点击/触摸命中范围（手机端尤其重要）
+    grp.add(makeHitProxy(THREE, head, grp))
+
     scene.add(grp)
     groups.push(grp)
   }
@@ -614,7 +670,11 @@ async function init() {
   pointer = new THREE.Vector2()
 
   renderer.domElement.addEventListener('pointermove', onMove)
-  renderer.domElement.addEventListener('click', onClick)
+  renderer.domElement.addEventListener('pointerdown', onPointerDown)
+  renderer.domElement.addEventListener('pointerup', onPointerUp)
+  renderer.domElement.addEventListener('pointercancel', onPointerCancel)
+  // 手指/鼠标在画布外抬起时兜底清理，避免状态残留
+  window.addEventListener('pointerup', onPointerUpGlobal)
   window.addEventListener('resize', onResize)
 
   clock = new THREE.Clock()
@@ -631,15 +691,13 @@ function onResize() {
 
 function onMove(ev: PointerEvent) {
   if (dragging) return
-  const rect = renderer.domElement.getBoundingClientRect()
-  pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
-  pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1
-  raycaster.setFromCamera(pointer, camera)
-  const hit = raycaster.intersectObjects(groups, true)[0]
-  const grp = hit ? findGroup(hit.object) : null
+  // 触摸/笔只用于旋转缩放，不做 hover 反馈（否则拖动中会误放大模型）
+  if (ev.pointerType !== 'mouse') return
+  const grp = pickAt(ev.clientX, ev.clientY)
   if (grp !== hovered) {
     if (hovered) {
-      hovered.userData.head.scale.setScalar(1)
+      // 已选中的设备保持放大状态，不被 hover 还原
+      hovered.userData.head.scale.setScalar(selected.value?.id === hovered.userData.id ? 1.4 : 1)
     }
     hovered = grp
     if (hovered) {
@@ -649,7 +707,41 @@ function onMove(ev: PointerEvent) {
   }
 }
 
-function onClick() { if (hovered && !dragging) selectGroup(hovered) }
+function onPointerDown(ev: PointerEvent) {
+  activePointers.add(ev.pointerId)
+  downInfo = { x: ev.clientX, y: ev.clientY, t: performance.now(), type: ev.pointerType }
+  // 用户一旦上手操作就停止自动旋转，避免移动端「目标一直在动」点不中
+  if (controls) controls.autoRotate = false
+}
+
+function onPointerCancel(ev: PointerEvent) {
+  activePointers.delete(ev.pointerId)
+  downInfo = null
+}
+
+// 抬起时判定为「轻点」才选中：与按下点距离小、时长短、且无多指手势
+function onPointerUp(ev: PointerEvent) {
+  activePointers.delete(ev.pointerId)
+  const info = downInfo
+  downInfo = null
+  if (!info || info.type !== ev.pointerType) return
+  if (ev.pointerType === 'mouse' && ev.button !== 0) return
+  if (dragging || activePointers.size > 0) return
+  const slop = TAP_SLOP[ev.pointerType] ?? 12
+  if (Math.hypot(ev.clientX - info.x, ev.clientY - info.y) > slop) return
+  if (performance.now() - info.t > TAP_MAX_MS) return
+  // 手指落点误差大：射线未命中时用「屏幕最近设备」兜底
+  const nearPx = ev.pointerType === 'mouse' ? 14 : 30
+  const grp = pickAt(ev.clientX, ev.clientY, nearPx)
+  if (grp) selectGroup(grp)
+  else if (selected.value) clearSelected()
+}
+
+// 兜底：在画布外抬起时清空按下状态（canvas 的 pointerup 已优先执行）
+function onPointerUpGlobal(ev: PointerEvent) {
+  activePointers.delete(ev.pointerId)
+  downInfo = null
+}
 
 function findGroup(obj: any): any {
   let o = obj
@@ -757,9 +849,12 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(animId)
   window.removeEventListener('resize', onResize)
   if (tcontrols) tcontrols.dispose?.()
+  window.removeEventListener('pointerup', onPointerUpGlobal)
   if (renderer) {
     renderer.domElement.removeEventListener('pointermove', onMove)
-    renderer.domElement.removeEventListener('click', onClick)
+    renderer.domElement.removeEventListener('pointerdown', onPointerDown)
+    renderer.domElement.removeEventListener('pointerup', onPointerUp)
+    renderer.domElement.removeEventListener('pointercancel', onPointerCancel)
     renderer.dispose()
     if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement)
     if (labelRenderer?.domElement.parentNode) labelRenderer.domElement.parentNode.removeChild(labelRenderer.domElement)

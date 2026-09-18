@@ -81,13 +81,14 @@ function createBarrelBody(mat: THREE.Material): THREE.Group {
 
 /** 创建顶部外翻漏斗沿 */
 function createRim(mat: THREE.Material): THREE.Mesh {
-  // 使用 LatheGeometry 创建外翻轮廓
-  const points: [number, number][] = [
-    [BUCKET_R, 0],
-    [BUCKET_R, RIM_H * 0.25],
-    [RIM_TOP_R - 0.008, RIM_H * 0.75],
-    [RIM_TOP_R, RIM_H],
-    [RIM_TOP_R - 0.006, RIM_H + 0.004],        // 外缘倒角
+  // 注意：LatheGeometry 直接读取点的 .x / .y，必须传 THREE.Vector2，
+  // 传 [number, number] 元组会让顶点变成 NaN（boundingSphere 半径为 NaN）。
+  const points: THREE.Vector2[] = [
+    new THREE.Vector2(BUCKET_R, 0),
+    new THREE.Vector2(BUCKET_R, RIM_H * 0.25),
+    new THREE.Vector2(RIM_TOP_R - 0.008, RIM_H * 0.75),
+    new THREE.Vector2(RIM_TOP_R, RIM_H),
+    new THREE.Vector2(RIM_TOP_R - 0.006, RIM_H + 0.004),        // 外缘倒角
   ]
   const latheGeo = new THREE.LatheGeometry(points, 32)
   const rim = new THREE.Mesh(latheGeo, mat)
