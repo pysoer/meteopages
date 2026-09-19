@@ -68,6 +68,12 @@ defineProps<{
         </div>
       </div>
     </div>
+
+    <!-- 自由排版区：md 文件中写在 <EquipmentPage> 标签之间的 Markdown 会渲染到这里
+         可放任意数量的图片、说明文字、列表、表格等 -->
+    <div v-if="$slots.default" class="md-body">
+      <slot />
+    </div>
   </div>
 </template>
 
@@ -103,4 +109,26 @@ defineProps<{
   .grid { grid-template-columns: 1fr 1fr; gap: 36px; }
   .right .title { font-size: 34px; }
 }
+
+/* 自由排版区：slot 内容由 md 编译而来，不在本组件的 scoped 作用域内，需用 :deep 命中 */
+.md-body { margin-top: 36px; }
+.md-body :deep(img) {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 14px 0;
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+  background: #05070f;
+}
+/* 约定：独占一段的 *斜体* 视为图注 */
+.md-body :deep(p > em:only-child) {
+  display: block;
+  margin: -6px 0 18px;
+  font-style: normal;
+  font-size: 13px;
+  text-align: center;
+  color: var(--sci-cyan);
+}
+.md-body :deep(hr) { border: 0; border-top: 1px solid var(--vp-c-divider); margin: 28px 0; }
 </style>

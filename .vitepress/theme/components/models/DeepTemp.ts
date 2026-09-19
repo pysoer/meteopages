@@ -1,11 +1,9 @@
 /**
- * 深层地温传感器（Deep Soil Temperature Sensor）
+ * 深层地温传感器：8 根 50cm 白色立柱 + 8 根配套 PVC 线管
  *
- * 参考特征（依据 equipment/deep.md 描述）：
- *   - 观测 40 / 80 / 160 / 320 cm 土壤温度
- *   - 地表为土面，垂直导管 + 分层探杆，顶部有接线盒
- *
- * 八阶段管线：Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
+ * 布置（俯视）：2 排，排间距 50cm；每排 4 个传感器 + 4 根 PVC 线管。
+ * 因每根立柱与其 PVC 线管紧挨着（相隔约 10cm），现场看上去是 4 条平行线：
+ *   [立柱排1][线管排1]  ——50cm——  [立柱排2][线管排2]
  */
 import * as THREE from 'three'
 
@@ -13,57 +11,50 @@ export function createDeepTemp(): THREE.Group {
   const root = new THREE.Group()
   root.name = 'DeepTemp'
 
-  // ── 材质 ──
-  const soilMat = new THREE.MeshStandardMaterial({ color: 0x6b4f36, roughness: 1, metalness: 0 })
-  const pipeMat = new THREE.MeshStandardMaterial({ color: 0xd8dde1, roughness: 0.35, metalness: 0.5 })
-  const darkMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.6, metalness: 0.25 })
-  const rodMat = new THREE.MeshStandardMaterial({ color: 0xb9c2c6, roughness: 0.4, metalness: 0.5 })
+  const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.5, metalness: 0.1 })
+  const pvcMat = new THREE.MeshStandardMaterial({ color: 0xe9eef0, roughness: 0.35, metalness: 0.05 })
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xcfd6da, roughness: 0.5, metalness: 0.2 })
 
-  // ── 1. Blockout：观测土面（疏松裸地土台） ──
-  const bed = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.8), soilMat)
-  bed.position.y = 0.04
-  root.add(bed)
+  const ROWS = 2                 // 2 排
+  const PER_ROW = 4              // 每排 4 个传感器
+  const SP = 0.26                // 同排内立柱间距（米）
+  const ROW_SP = 0.5             // 排间距 50cm
+  const PVC_OFF = 0.1            // 传感器与 PVC 线管间距（很近）
+  const H = 0.5                  // 立柱高 50cm
+  const R = 0.038                // 立柱半径
+  const totalW = (PER_ROW - 1) * SP
+  const startX = -totalW / 2
 
-  // ── 2. Structural：中央垂直导管 ──
-  const pipeH = 0.55
-  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, pipeH, 20), pipeMat)
-  pipe.position.y = 0.08 + pipeH / 2
-  root.add(pipe)
+  for (let r = 0; r < ROWS; r++) {
+    const zc = (r - (ROWS - 1) / 2) * ROW_SP
+    const zCol = zc - PVC_OFF / 2
+    const zPvc = zc + PVC_OFF / 2
 
-  // 深度标识环（40/80/160/320cm 示意，按等比缩略绘制在导管上）
-  for (let i = 1; i <= 4; i++) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.006, 8, 20), darkMat)
-    ring.rotation.x = Math.PI / 2
-    ring.position.y = 0.08 + (pipeH * i) / 4.6
-    root.add(ring)
+    for (let i = 0; i < PER_ROW; i++) {
+      const x = startX + i * SP
+      // 白色立柱
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 18), whiteMat)
+      col.position.set(x, H / 2, zCol)
+      root.add(col)
+      // 柱顶封盖
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(R * 1.2, R * 1.2, 0.03, 18), capMat)
+      cap.position.set(x, H + 0.015, zCol)
+      root.add(cap)
+      // 配套的 PVC 线管（略高、略粗，紧挨立柱南侧）
+      const pvc = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.8, R * 0.8, H + 0.06, 14), pvcMat)
+      pvc.position.set(x, (H + 0.06) / 2, zPvc)
+      root.add(pvc)
+      const pvcCap = new THREE.Mesh(new THREE.SphereGeometry(R * 0.8, 12, 8), pvcMat)
+      pvcCap.position.set(x, H + 0.06, zPvc)
+      root.add(pvcCap)
+    }
+
+    // 每排底部汇线槽
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(totalW + 0.2, 0.05, 0.08), capMat)
+    rail.position.set(0, 0.025, zPvc)
+    root.add(rail)
   }
 
-  // ── 3. Form：顶部接线盒 ──
-  const jbox = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.16), darkMat)
-  jbox.position.y = 0.08 + pipeH + 0.07
-  root.add(jbox)
-
-  // ── 4. Surface：从导管引出的 4 根探杆（斜插入土，示意分层） ──
-  const depths = [40, 80, 160, 320]
-  depths.forEach((d, i) => {
-    const ang = (i / 4) * Math.PI * 2 + Math.PI / 4
-    const len = 0.5 + i * 0.12
-    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, len, 10), rodMat)
-    // 从导管中部斜向下插入土
-    rod.position.set(
-      Math.cos(ang) * (0.09 + i * 0.03),
-      0.30 - i * 0.02,
-      Math.sin(ang) * (0.09 + i * 0.03),
-    )
-    rod.rotation.z = Math.PI / 2.6 * (i % 2 === 0 ? 1 : -1)
-    rod.rotation.x = ang
-    root.add(rod)
-
-    // 深度刻度小标签块
-    const tag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.03), darkMat)
-    tag.position.set(Math.cos(ang) * 0.075, 0.08 + pipeH - i * 0.09, Math.sin(ang) * 0.075)
-    root.add(tag)
-  })
-
+  root.userData.labelHeight = 1.0
   return root
 }

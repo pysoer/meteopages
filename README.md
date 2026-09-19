@@ -65,7 +65,7 @@ npm run preview  # 预览构建产物
 
 ### 替换示意图为实拍照片
 
-1. 将图片放入 `public/images/`，例如 `public/images/th.jpg`
+1. 将图片放入 `public/equipment/`，例如 `public/equipment/th.jpg`
 2. 在对应设备页的 `<EquipmentPage>` 上增加 `image="/images/th.jpg"`
 
 不传 `image` 时，会自动使用内置的科技风 SVG 示意图。
@@ -84,6 +84,33 @@ npm run preview  # 预览构建产物
 3. 用「矩形道路 / 折线道路 / 设备便道」在框内绘制：拖动或点击，右侧面板可改宽度、删除元素
 4. 导出 `roads.json` 放进 `public/` 目录，3D 导览页会自动加载；也可导出 TS 片段直接粘贴代码
 5. 坐标系与 3D 场景一致：原点西南角，X 东、Y 北，单位 m
+
+### 调整 3D 导览页的设备位置（编辑模式）
+
+在导览页 URL 后加 `?edit` 参数即可进入**编辑模式**，例如：
+
+```
+http://localhost:5173/guide?edit          # 本地开发
+https://meteopages.pycinrad.cn/guide?edit # 线上（若部署路径不同，请以实际 guide 页地址为准）
+```
+
+编辑模式下会多出一条工具条：
+
+- **可以拖动设备**：先点选一台设备，出现箭头后拖拽即可移动（仅沿地面 X/Z 平移，不会抬高）；拖动时场景自动旋转会暂停
+- **导出 JSON 按钮**：把当前所有设备的坐标导出为 `devices.json`
+  1. 点「导出 JSON」下载文件
+  2. 把 `devices.json` 放进 `public/` 目录
+  3. 3D 导览页会自动优先加载它（`devices.json` 中没有的设备仍回落到内置坐标）
+
+字段说明（坐标系与场地一致：原点西南角，X 东、Y 北，单位 m）：
+
+```json
+[
+  { "x": 19.47, "y": 17.16, "id": "th", "label": "百叶箱" }
+]
+```
+
+不带 `?edit` 时，页面为只读展示态：不能拖动、也不显示导出按钮。
 
 ### 新增一台设备
 

@@ -2,7 +2,8 @@
  * 风廓线雷达（Wind Profiler Radar，边界层相控阵 + RASS 声学阵列）
  *
  * 形态依据（参考图 public/equipment/windprofiler.png 实拍航拍重建）：
- *   - 正方形白色网围栏场地，顶部栏杆呈花瓣状内弯弧线
+ *   - 正方形白色网围栏场地（已删除全部 8.4m 长横栏：顶部弧形栏 + 上下直横栏，
+ *     仅保留网面与立柱；角柱、声学塔、中央阵列保留）
  *   - 场地四角各一座白色圆柱形声学塔（RASS 声阵列），
  *     塔顶一圈黑色锯齿状尖齿冠
  *   - 场地中央：大型白色方形相控阵天线（顶面布满天线单元栅格），
@@ -45,27 +46,8 @@ export function createWindProfiler(): THREE.Group {
     const lower = new THREE.Mesh(new THREE.PlaneGeometry(HALF * 2, FENCE_H), meshMat)
     lower.position.set(0, FENCE_H / 2 + 0.12, HALF)
     side.add(lower)
-    // 上下横栏
-    const railGeo = new THREE.CylinderGeometry(0.03, 0.03, HALF * 2, 10)
-    for (const ry of [0.18, FENCE_H + 0.05]) {
-      const rail = new THREE.Mesh(railGeo, whiteMat)
-      rail.rotation.x = Math.PI / 2
-      rail.position.set(0, ry, HALF)
-      side.add(rail)
-    }
-    // 顶部内弯弧形栏（花瓣状：角部高、边中低、并向内收）
-    const curvePts = [
-      new THREE.Vector3(-HALF, FENCE_H + TOP_H, HALF),
-      new THREE.Vector3(-HALF * 0.55, FENCE_H + TOP_H * 0.62, HALF - 0.22),
-      new THREE.Vector3(0, FENCE_H + TOP_H * 0.42, HALF - 0.42),
-      new THREE.Vector3(HALF * 0.55, FENCE_H + TOP_H * 0.62, HALF - 0.22),
-      new THREE.Vector3(HALF, FENCE_H + TOP_H, HALF),
-    ]
-    const topRail = new THREE.Mesh(
-      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(curvePts), 32, 0.035, 8, false),
-      whiteMat,
-    )
-    side.add(topRail)
+    // 上下横栏（每侧 2 根 8.4m 长杆：俯视 2 横 + 2 纵）已按要求删除
+    // 顶部内弯弧形长栏（花瓣状）已按要求删除
     // 上段倾斜网面（连接直段顶与弧形栏）
     const upper = new THREE.Mesh(new THREE.PlaneGeometry(HALF * 2, TOP_H + 0.35), meshMat)
     upper.position.set(0, FENCE_H + (TOP_H + 0.35) / 2 - 0.02, HALF - 0.16)

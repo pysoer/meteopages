@@ -3,7 +3,7 @@
  *
  * 参考特征（依据 equipment/gnssmet.md 描述 + 标准 GNSS 观测墩形态）：
  *   - 混凝土观测墩（方柱），顶部安装大地型扼流圈天线 + 白色天线罩
- *   - 墩下/旁设接收机机柜，馈线沿墩身下行
+ *   - 已移除：方形接收机机柜（只保留圆顶部分）
  *
  * 八阶段管线：Blockout → Structural → Form → Material → Surface → Lighting → Interaction → Optimization
  */
@@ -62,31 +62,11 @@ export function createGnssMet(): THREE.Group {
   skirt.position.y = antY + 0.0
   root.add(skirt)
 
-  // ── 4. Surface：接收机机柜 + 馈线 ──
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.42), domeMat)
-  cab.position.set(-0.7, 0.375 + 0.05, 0)
-  root.add(cab)
-  const cabBase = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.05, 0.48), darkMat)
-  cabBase.position.set(-0.7, 0.025, 0)
-  root.add(cabBase)
-  // 机柜前面板灯
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x34d399, emissiveIntensity: 1.2 })
-  const lamp = new THREE.Mesh(new THREE.CircleGeometry(0.016, 10), lampMat)
-  lamp.position.set(-0.7, 0.72, 0.211)
-  root.add(lamp)
 
-  // 馈线：墩顶 → 机柜
-  const feedPts = [
-    new THREE.Vector3(0.06, antY + 0.02, 0.06),
-    new THREE.Vector3(-0.1, pierH * 0.6, 0.22),
-    new THREE.Vector3(-0.5, 0.55, 0.2),
-    new THREE.Vector3(-0.7, 0.5, 0.2),
-  ]
-  const feed = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(feedPts), 24, 0.012, 8, false),
-    new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 }),
-  )
-  root.add(feed)
+
+
+
+
 
   // 避雷针（墩顶一角细针）
   const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.6, 8), metalMat)

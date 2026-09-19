@@ -33,9 +33,15 @@ const selected = ref<any>(null)
 const loading = ref(true)
 const errorMsg = ref('')
 const showGrid = ref(false) // 默认不显示网格
+// 一键显示 / 隐藏全部设备名称（默认仅显示点选或悬浮的设备）
+const showAllLabels = ref(false)
 
-// 设备是否可拖动：默认 false（禁止拖动），需要时由调用方通过 :draggable="true" 开启
+// 编辑模式：访问 /guide?edit（或 ?edit=1）时开启 —— 可拖动设备 + 显示「导出 JSON」按钮
+const editMode = ref(false)
+
+// 设备是否可拖动：编辑模式，或由调用方通过 :draggable="true" 开启
 const props = withDefaults(defineProps<{ draggable?: boolean }>(), { draggable: false })
+const canDrag = () => props.draggable || editMode.value
 
 const FIELD_SIZE = 25 // 观测场边长（米）：25m × 25m 正方形，原点(0,0)在西南角，X 东、Y 北
 const PATH_W = 0.6   // 步道宽度（米），规范小路
@@ -66,7 +72,7 @@ const FULL: any[] = [
   { id: 'visobs', name: '视程障碍现象仪', type: 'visobs', color: 0x7dd3fc, desc: '识别雾、霾、沙尘等视程障碍现象。', link: '/equipment/visobs' },
   { id: 'powerbox', name: '智能配电箱', type: 'powerbox', color: 0xfb7185, desc: '统一为观测场设备配电、防雷与远程控制。', link: '/equipment/powerbox' },
   { id: 'hwcontroller', name: '综合集成硬件控制器', type: 'hwcontroller', color: 0x94a3b8, desc: '集成采集、控制与通信的现场核心机箱。', link: '/equipment/hwcontroller' },
-  { id: 'cloudradar', name: '毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。', link: '/equipment/cloudradar' },
+  { id: 'cloudradar', name: 'Ka波段毫米波测云仪', type: 'cloudradar', color: 0x60a5fa, desc: '毫米波散射探测云的垂直结构（回波顶/底高、粒子尺度）。', link: '/equipment/cloudradar' },
   { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, desc: '被动微波遥感，连续获取温湿廓线与云水含量。', link: '/equipment/radiometer' },
   { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, desc: '湍流散射连续获取水平/垂直风场廓线。', link: '/equipment/windprofiler' },
   { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, desc: '导航卫星信号反演大气可降水量等参数。', link: '/equipment/gnssmet' },
@@ -524,7 +530,7 @@ async function init() {
   controls.maxDistance = 120
   controls.maxPolarAngle = Math.PI / 2.15
   controls.target.set(FIELD_SIZE / 2, 0.5, -FIELD_SIZE / 2 + 3)
-  controls.autoRotate = true
+  controls.autoRotate = !editMode.value // 编辑模式下停止自动旋转，便于拖动
   controls.autoRotateSpeed = 0.25
 
   // 拖动控制（仅地面 X/Z 平移）
@@ -757,6 +763,15 @@ function setLabelVisible(grp: any, visible: boolean) {
   el.style.pointerEvents = visible ? 'auto' : 'none'
 }
 
+// 一键显示 / 隐藏所有设备的名称标签（点选中的设备始终显示）
+function toggleAllLabels() {
+  showAllLabels.value = !showAllLabels.value
+  for (const g of groups) {
+    const keep = showAllLabels.value || selected.value?.id === g.userData.id
+    setLabelVisible(g, keep)
+  }
+}
+
 function selectGroup(grp: any) {
   // 先还原上一个选中设备的标签与高亮
   if (selected.value) {
@@ -764,7 +779,7 @@ function selectGroup(grp: any) {
     if (prev) {
       prev.userData.head.scale.setScalar(1)
       prev.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = prev.userData.baseEmissive })
-      setLabelVisible(prev, false)
+      setLabelVisible(prev, showAllLabels.value)
     }
   }
   selected.value = { ...grp.userData }
@@ -772,7 +787,7 @@ function selectGroup(grp: any) {
   grp.userData.head.scale.setScalar(1.4)
   grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = 1.6 })
   setLabelVisible(grp, true)
-  if (props.draggable) tcontrols.attach(grp)
+  if (canDrag()) tcontrols.attach(grp)
 }
 
 function clearSelected() {
@@ -781,11 +796,11 @@ function clearSelected() {
     if (grp) {
       grp.userData.head.scale.setScalar(1)
       grp.userData.head.children.forEach((c: any) => { if (c.material) c.material.emissiveIntensity = grp.userData.baseEmissive })
-      setLabelVisible(grp, false)
+      setLabelVisible(grp, showAllLabels.value)
     }
   }
   selected.value = null
-  if (props.draggable) tcontrols.detach()
+  if (canDrag()) tcontrols.detach()
   controls.autoRotate = true
 }
 
@@ -837,6 +852,9 @@ function animate() {
 }
 
 onMounted(() => {
+  // ?edit 开启编辑模式（拖动设备 + 导出 JSON）
+  const q = new URLSearchParams(window.location.search)
+  editMode.value = q.has('edit')
   document.addEventListener('click', onNavAnchorClick, true)
   init().catch((e) => {
     loading.value = false
@@ -868,6 +886,26 @@ onBeforeUnmount(() => {
 
     <div class="top-bar">
       <span class="sci-kicker">地面气象观测场</span>
+      <button
+        class="eye-toggle"
+        :class="{ on: showAllLabels }"
+        :aria-pressed="showAllLabels"
+        :title="showAllLabels ? '隐藏全部设备名称' : '显示全部设备名称'"
+        @click="toggleAllLabels"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />
+          <circle cx="12" cy="12" r="2.8" />
+          <!-- 关闭态：斜杠 -->
+          <line v-if="showAllLabels" x1="3" y1="21" x2="21" y2="3" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- 编辑模式（?edit）：点选设备后可拖动，并导出 devices.json -->
+    <div v-if="editMode" class="edit-bar">
+      <span class="edit-tip">编辑模式：点选设备后用箭头拖动（仅地面平移）</span>
+      <button class="sci-btn" @click="exportLayout">导出 JSON</button>
     </div>
 
     <div v-if="loading" class="status">正在加载三维场景…</div>
@@ -893,11 +931,39 @@ onBeforeUnmount(() => {
 .canvas-wrap { position: absolute; inset: 0; }
 .canvas-wrap :deep(canvas) { display: block; touch-action: none; }
 
-.top-bar { position: absolute; top: 16px; left: 0; right: 0; text-align: center; z-index: 5; pointer-events: none; padding: 0 12px; }
+.top-bar {
+  position: absolute; top: 16px; left: 0; right: 0; z-index: 5; pointer-events: none; padding: 0 12px;
+  display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+/* 名称总览开关：圆形图标按钮，眼睛 + 开启态青色高亮 */
+.eye-toggle {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: 1px solid rgba(80,130,160,0.35); border-radius: 50%;
+  background: rgba(255,255,255,0.72); color: var(--vp-c-text-2);
+  cursor: pointer; backdrop-filter: blur(6px);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.eye-toggle:hover { color: var(--sci-cyan); border-color: var(--sci-cyan); }
+.eye-toggle.on { color: var(--sci-cyan); border-color: var(--sci-cyan); background: rgba(34,211,238,0.12); }
+.eye-toggle svg { display: block; }
 .top-bar h1 { font-size: 24px; margin: 6px 0 4px; }
 .top-bar p { color: var(--vp-c-text-2); font-size: 13px; margin: 0; }
 .grid-toggle { display: flex; justify-content: center; margin-top: 8px; }
 .grid-toggle button { pointer-events: auto; padding: 4px 14px; font-size: 12px; }
+
+.edit-bar {
+  position: absolute; top: 46px; left: 0; right: 0; z-index: 6;
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  flex-wrap: wrap; padding: 0 12px; pointer-events: none;
+}
+.edit-bar .sci-btn { pointer-events: auto; padding: 5px 14px; font-size: 12px; }
+.edit-tip {
+  pointer-events: none; font-size: 11.5px; color: var(--vp-c-text-2);
+  background: rgba(255,255,255,0.72); border: 1px solid rgba(80,130,160,0.25);
+  border-radius: 999px; padding: 3px 10px; backdrop-filter: blur(6px);
+}
 
 .status { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 7; color: var(--vp-c-text-2); font-size: 14px; }
 .status.err { color: #f87171; }
