@@ -22,7 +22,8 @@ export default defineConfig({
       {
         text: '观测设备',
         items: equipmentLinks
-      }
+      },
+      { text: '二维码', link: '/qr' }
     ],
 
     sidebar: {

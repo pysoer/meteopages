@@ -1,6 +1,6 @@
 # 气象观测场设备数字导览
 
-基于 **VitePress** + **Three.js** 的地面气象观测场设备介绍站点。包含科技感首页、可交互的 **3D 观测场导览**，以及温湿度、风向风速、雨量、蒸发、气压、能见度等设备的独立介绍页（文字 + 示意图 + 演示视频位）。
+基于 **VitePress** + **Three.js** 的地面气象观测场设备介绍站点。包含科技感首页、可交互的 **3D 观测场导览**、各设备的独立介绍页（文字 + 示意图 + 演示视频位），以及可单个 / 批量下载的**页面二维码**（`/qr`）。
 
 已实现自动提交到阿里云的边缘函数pages，可直接访问：https://meteopages.pycinrad.cn/
 
@@ -24,9 +24,11 @@ meteopages/
 │           ├── Scene3D.vue        # 3D 观测场导览
 │           ├── EquipmentPage.vue  # 设备详情页布局
 │           ├── EquipImage.vue     # 设备 SVG 示意图
-│           └── VideoBlock.vue     # 演示视频区块
+│           ├── VideoBlock.vue     # 演示视频区块
+│           └── QrCodes.vue        # 页面二维码（生成 / 单个或批量下载）
 ├── index.md                      # 首页（使用 HomeLanding）
 ├── guide.md                      # 3D 导览页（使用 Scene3D）
+├── qr.md                         # 页面二维码页（使用 QrCodes）
 ├── equipment/                    # 各设备介绍页（Markdown）
 │   ├── temperature-humidity.md
 │   ├── wind.md
@@ -111,6 +113,17 @@ https://meteopages.pycinrad.cn/guide?edit # 线上（若部署路径不同，请
 ```
 
 不带 `?edit` 时，页面为只读展示态：不能拖动、也不显示导出按钮。
+
+### 页面二维码（/qr）
+
+访问 `/qr`（导航栏「二维码」）可看到**首页、3D 导览页、每台设备页**的二维码，共 `EQUIPMENTS` 数量 + 2 个。
+
+- 二维码内容固定指向正式站点 `https://meteopages.pycinrad.cn`（修改 `QrCodes.vue` 顶部的 `SITE` 常量即可换域名）
+- 每张卡片可「下载 PNG」（带中文标题的白底图片，适合打印贴牌）、「复制链接」
+- 「全部下载（ZIP）」把所有二维码打包为 `meteopages-qrcodes.zip`，内含 `01-home.png`、`02-guide.png`、`03-equipment-xxx.png` … 以及一份链接清单
+- 设备列表由 `equipments.ts` 派生，新增设备后二维码页自动同步
+
+依赖：`qrcode`（生成矩阵）、`jszip`（打包 ZIP），均在点击 / 页面加载时按需加载。
 
 ### 新增一台设备
 

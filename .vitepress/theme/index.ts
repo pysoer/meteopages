@@ -7,6 +7,7 @@ import Scene3D from './components/Scene3D.vue'
 import EquipmentPage from './components/EquipmentPage.vue'
 import EquipImage from './components/EquipImage.vue'
 import VideoBlock from './components/VideoBlock.vue'
+import QrCodes from './components/QrCodes.vue'
 
 export default {
   extends: DefaultTheme,
@@ -16,5 +17,6 @@ export default {
     app.component('EquipmentPage', EquipmentPage)
     app.component('EquipImage', EquipImage)
     app.component('VideoBlock', VideoBlock)
+    app.component('QrCodes', QrCodes)
   }
 }
