@@ -2,14 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { EQUIPMENTS } from '../../equipments'
 
-/** 线上站点域名：二维码始终指向正式站点，方便打印后现场扫码 */
-const SITE = 'https://meteopages.pycinrad.cn'
-
 const QUIET = 4 // 二维码静默区（模块数）
 
 interface QrItem {
   name: string // 卡片 / 图片上的中文标题
-  url: string // 二维码内容
+  path: string // 站内路径
   file: string // 文件名（纯英文，避免压缩包乱码）
   size: number // 矩阵边长（模块数），生成后填充
   d: string // SVG path，页面渲染用
@@ -20,12 +17,16 @@ interface Matrix {
   data: Uint8Array
 }
 
+// 二维码内容 = 当前访问站点 + 页面路径（挂载后取 location.origin，不写死域名）
+const host = ref('')
+const urlOf = (it: QrItem) => host.value + it.path
+
 const items = ref<QrItem[]>([
-  { name: '首页', url: SITE + '/', file: 'home', size: 0, d: '' },
-  { name: '3D 导览', url: SITE + '/guide', file: 'guide', size: 0, d: '' },
+  { name: '地面气象观测场导览', path: '/', file: 'home', size: 0, d: '' },
+  { name: '3D 导览', path: '/guide', file: 'guide', size: 0, d: '' },
   ...EQUIPMENTS.map((e) => ({
     name: e.name,
-    url: `${SITE}/equipment/${e.type}`,
+    path: `/equipment/${e.type}`,
     file: `equipment-${e.type}`,
     size: 0,
     d: ''
@@ -149,7 +150,7 @@ async function downloadAll() {
       progress.value = `正在生成 ${i + 1}/${items.value.length}：${it.name}`
       await new Promise((r) => setTimeout(r, 0)) // 让出主线程以刷新进度
       dir.file(`${idx}-${it.file}.png`, await toBlob(drawQr(it)))
-      list += `${idx}. ${it.name}\t${it.url}\n`
+      list += `${idx}. ${it.name}\t${urlOf(it)}\n`
     }
 
     progress.value = '正在打包 ZIP…'
@@ -166,7 +167,7 @@ async function downloadAll() {
 
 async function copyLink(item: QrItem) {
   try {
-    await navigator.clipboard.writeText(item.url)
+    await navigator.clipboard.writeText(urlOf(item))
     notify('链接已复制')
   } catch {
     notify('复制失败，请手动选择复制')
@@ -175,10 +176,11 @@ async function copyLink(item: QrItem) {
 
 onMounted(async () => {
   try {
+    host.value = window.location.origin
     const mod: any = await import('qrcode')
     const create = mod.create ?? mod.default?.create
     for (const it of items.value) {
-      const qr = create(it.url, { errorCorrectionLevel: 'M' })
+      const qr = create(urlOf(it), { errorCorrectionLevel: 'M' })
       const m = qr.modules as Matrix
       matrixMap.set(it.file, m)
       it.size = m.size
@@ -197,8 +199,8 @@ onMounted(async () => {
       <span class="sci-kicker">QR CODES</span>
       <h1 class="qtitle">页面<span class="grad">二维码</span></h1>
       <p class="lead">
-        共 <b>{{ items.length }}</b> 个二维码：首页、3D 导览页，以及每台观测设备的独立介绍页。
-        二维码内容均指向正式站点 <code>{{ SITE }}</code>，可单张下载，也可一键打包下载全部。
+        共 <b>{{ items.length }}</b> 个二维码：地面气象观测场导览（首页）、3D 导览页，以及每台观测设备的独立介绍页。
+        二维码内容取自当前访问站点 <code>{{ host || '…' }}</code>，可单张下载，也可一键打包下载全部。
       </p>
       <div class="qh-actions">
         <button class="sci-btn" :disabled="!ready || busy" @click="downloadAll">
@@ -228,7 +230,7 @@ onMounted(async () => {
           <div v-else class="qph">生成中…</div>
         </div>
 
-        <a class="qurl" :href="it.url" target="_blank" rel="noopener">{{ it.url }}</a>
+        <a class="qurl" :href="urlOf(it)" target="_blank" rel="noopener">{{ urlOf(it) }}</a>
 
         <div class="qbtns">
           <button class="sci-btn ghost sm" :disabled="!ready" @click="downloadOne(it)">下载 PNG</button>

@@ -64,6 +64,7 @@ defineProps<{
 
         <div class="actions">
           <a class="sci-btn" href="/guide">查看 3D 导览</a>
+          <a class="sci-btn ghost" href="/qr">页面二维码</a>
           <a class="sci-btn ghost" href="/">返回首页</a>
         </div>
       </div>

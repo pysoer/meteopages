@@ -6,6 +6,13 @@ const equipmentLinks = EQUIPMENTS
   .filter((e) => e.inNav !== false)
   .map((e) => ({ text: e.name, link: '/equipment/' + e.type }))
 
+// 站点级入口：同时用于顶部导航与侧栏，保证手机端任意菜单里都能找到二维码
+const siteLinks = [
+  { text: '首页', link: '/' },
+  { text: '3D 导览', link: '/guide' },
+  { text: '页面二维码', link: '/qr' }
+]
+
 // 站点整体配置：气象观测场设备数字导览
 export default defineConfig({
   title: '气象观测场设备导览',
@@ -16,18 +23,23 @@ export default defineConfig({
   cleanUrls: true,
 
   themeConfig: {
+    // 二维码放在「观测设备」折叠组之前，避免手机端展开 25 台设备后把它挤到屏幕外
     nav: [
       { text: '首页', link: '/' },
       { text: '3D 导览', link: '/guide' },
+      { text: '二维码', link: '/qr' },
       {
         text: '观测设备',
         items: equipmentLinks
-      },
-      { text: '二维码', link: '/qr' }
+      }
     ],
 
     sidebar: {
       '/equipment/': [
+        {
+          text: '站点导航',
+          items: siteLinks
+        },
         {
           text: '观测场内设备',
           items: equipmentLinks
@@ -36,10 +48,7 @@ export default defineConfig({
       '/': [
         {
           text: '开始',
-          items: [
-            { text: '首页', link: '/' },
-            { text: '3D 导览', link: '/guide' }
-          ]
+          items: siteLinks
         }
       ]
     },

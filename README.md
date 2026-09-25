@@ -118,7 +118,7 @@ https://meteopages.pycinrad.cn/guide?edit # 线上（若部署路径不同，请
 
 访问 `/qr`（导航栏「二维码」）可看到**首页、3D 导览页、每台设备页**的二维码，共 `EQUIPMENTS` 数量 + 2 个。
 
-- 二维码内容固定指向正式站点 `https://meteopages.pycinrad.cn`（修改 `QrCodes.vue` 顶部的 `SITE` 常量即可换域名）
+- 二维码内容取自**当前访问站点**（`window.location.origin` + 页面路径），不写死域名：本地预览生成 localhost 链接、线上生成正式域名链接，换域名无需改代码
 - 每张卡片可「下载 PNG」（带中文标题的白底图片，适合打印贴牌）、「复制链接」
 - 「全部下载（ZIP）」把所有二维码打包为 `meteopages-qrcodes.zip`，内含 `01-home.png`、`02-guide.png`、`03-equipment-xxx.png` … 以及一份链接清单
 - 设备列表由 `equipments.ts` 派生，新增设备后二维码页自动同步

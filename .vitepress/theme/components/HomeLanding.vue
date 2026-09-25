@@ -78,6 +78,7 @@ onMounted(() => {
         <div class="cta">
           <button class="sci-btn" @click="go('/guide')">进入 3D 导览 →</button>
           <button class="sci-btn ghost" @click="go('/equipment/th')">浏览设备</button>
+          <button class="sci-btn ghost" @click="go('/qr')">页面二维码</button>
         </div>
         <div class="stats">
           <div v-for="s in stats" :key="s.k" class="stat">

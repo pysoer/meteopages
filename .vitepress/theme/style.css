@@ -56,12 +56,19 @@ body::before {
 
 .VPContent, .VPHome, .VPFooter, .VPSidebar, .VPNav { position: relative; z-index: 1; }
 
-/* 顶部导航发光 */
+/* 顶部导航发光
+   注意：backdrop-filter / filter 会让元素成为 fixed 子元素的包含块，
+   若加在 .VPNav 上，手机端全屏菜单（.VPNavScreen 为 position:fixed）会被压成 0 高度而无法点击。
+   因此毛玻璃只加在 .VPNavBar（本身 position:relative，且不含 fixed 子元素）。 */
 .VPNav {
   background: rgba(8, 12, 24, 0.72) !important;
-  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--vp-c-divider);
   z-index: 100;
+}
+.VPNavBar {
+  background-color: rgba(8, 12, 24, 0.72) !important;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 .VPNavBarTitle .title {
   background: linear-gradient(90deg, var(--sci-cyan), var(--sci-purple));
@@ -119,6 +126,14 @@ body::before {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--sci-blue), var(--sci-purple)); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: #05070f; }
+
+/* ---------- 手机端：未滚动时隐藏二级菜单栏（VPLocalNav） ----------
+   设备页的二级菜单栏会一直占用首屏（且不含二维码入口），
+   未滚动时隐藏；滚动过顶部导航高度后再以浮层形式出现，避免内容跳动 */
+@media (max-width: 959px) {
+  html .VPLocalNav:not(.fixed) { position: fixed; top: 0; }
+  html:not(.is-scrolled) .VPLocalNav { display: none !important; }
+}
 
 /* ---------- 手机端微调 ---------- */
 @media (max-width: 600px) {
