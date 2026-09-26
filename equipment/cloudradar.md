@@ -6,6 +6,7 @@ aside: false
   type="cloudradar"
   image="/equipment/cloudradar.png"
   title="Ka波段毫米波测云仪"
+  subtitle="0-15km的垂直方向云层探测"
 >
 
 <!-- 以下是自由排版区：直接写 Markdown，图片数量、顺序、说明文字随意安排 -->

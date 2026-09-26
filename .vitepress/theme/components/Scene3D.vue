@@ -59,7 +59,7 @@ const FULL: any[] = [
   { id: 'visibility', name: '能见度传感器', type: 'visibility', color: 0x34d399, desc: '散射法测量气象光学视程（MOR）。', link: '/equipment/visibility' },
   { id: 'precip', name: '降水现象仪', type: 'precip', color: 0x2dd4bf, desc: '激光检测粒子图谱，识别雨、雪、冰雹等降水现象。', link: '/equipment/precip' },
   { id: 'phenom', name: '天气现象视频观测仪', type: 'phenom', color: 0xa855f7, desc: '计算机视觉 + 深度学习，识别云、霜、积雪等。', link: '/equipment/phenom' },
-  { id: 'ground', name: '地温场', type: 'ground', color: 0xf59e0b, desc: '测地面温度及 5/10/15/20cm 浅层地温。', link: '/equipment/ground' },
+  { id: 'ground', name: '浅层地温场', type: 'ground', color: 0xf59e0b, desc: '测地面温度及 5/10/15/20cm 浅层地温。', link: '/equipment/ground' },
   { id: 'sunshine', name: '日照传感器', type: 'sunshine', color: 0xfacc15, desc: '记录太阳实际照射时数。', link: '/equipment/sunshine' },
   { id: 'grass', name: '草面温度传感器', type: 'grass', color: 0x84cc16, desc: '距地 6cm 测草面温度，用于霜冻预警。', link: '/equipment/grass' },
   { id: 'deep', name: '深层地温传感器', type: 'deep', color: 0xfb923c, desc: '测 40/80/160/320cm 深层地温，反映土壤热状况。', link: '/equipment/deep' },
@@ -76,7 +76,7 @@ const FULL: any[] = [
   { id: 'radiometer', name: '微波辐射计', type: 'radiometer', color: 0xfbbf24, desc: '被动微波遥感，连续获取温湿廓线与云水含量。', link: '/equipment/radiometer' },
   { id: 'windprofiler', name: '风廓线雷达', type: 'windprofiler', color: 0x818cf8, desc: '湍流散射连续获取水平/垂直风场廓线。', link: '/equipment/windprofiler' },
   { id: 'gnssmet', name: 'GNSS/MET 水汽探测仪', type: 'gnssmet', color: 0x34d399, desc: '导航卫星信号反演大气可降水量等参数。', link: '/equipment/gnssmet' },
-  { id: 'lidarwind', name: '3D 激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, desc: '多普勒激光获取三维风矢量与风廓线。', link: '/equipment/lidarwind' },
+  { id: 'lidarwind', name: '激光测风雷达', type: 'lidarwind', color: 0x2dd4bf, desc: '多普勒激光获取三维风矢量与风廓线。', link: '/equipment/lidarwind' },
   { id: 'weathermod', name: '人工影响天气装备', type: 'weathermod', color: 0xf43f5e, desc: '火箭/高炮/烟炉/飞机向云中播撒催化剂，增雨防雹消雾。', link: '/equipment/weathermod' }
 ]
 

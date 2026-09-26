@@ -33,7 +33,7 @@ export const EQUIPMENTS: Equipment[] = [
   { type: 'lightning', name: '闪电定位仪', desc: '探测云地闪电位置、时间与强度' },
   { type: 'evap', name: '蒸发器', desc: 'E-601 蒸发皿测水面蒸发', home: true, homeTitle: '蒸发观测设备' },
   { type: 'evapsensor', name: '超声波蒸发传感器', desc: '超声波测蒸发量' },
-  { type: 'ground', name: '浅层低温观测', desc: '测地面及 5–20cm 浅层地温', home: true, homeTitle: '地温场' },
+  { type: 'ground', name: '浅层地温观测', desc: '测地面及 5–20cm 浅层地温', home: true, homeTitle: '地温场' },
   { type: 'grass', name: '草面温度传感器', desc: '贴地 6cm 测草温，霜冻预警', home: true },
   { type: 'sunshine', name: '日照传感器', desc: '记录太阳实际照射时数', home: true },
   { type: 'deep', name: '深层地温传感器', desc: '测 40–320cm 深层地温', home: true },
@@ -41,7 +41,7 @@ export const EQUIPMENTS: Equipment[] = [
   { type: 'radiometer', name: '微波辐射计', desc: '被动微波遥感温湿廓线与云水', home: true },
   { type: 'windprofiler', name: 'P波段风廓线雷达', desc: '湍流散射连续获取风场廓线', home: true },
   { type: 'gnssmet', name: 'GNSS/MET 水汽探测仪', desc: '导航卫星信号反演大气可降水量', home: true },
-  { type: 'lidarwind', name: '3D扫描式激光测风雷达', desc: '多普勒激光获取三维风场', home: true },
+  { type: 'lidarwind', name: '激光测风雷达', desc: '多普勒激光获取三维风场', home: true },
   { type: 'icingrack', name: '电线积冰架', desc: '观测导线覆冰厚度、直径与重量' },
   { type: 'weathermod', name: '人工影响天气装备', desc: '火箭/高炮/烟炉/飞机催化增雨防雹', home: true }
 ]
